@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MandarinReader — Vocabulary Dashboard</title>
+<style>
+/* ── Reset & tokens ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0f0f11;
+  --surface:   #18181b;
+  --surface2:  #232329;
+  --border:    #2e2e36;
+  --text:      #e4e4e7;
+  --muted:     #71717a;
+  --accent:    #6366f1;
+
+  --unknown-bg:  #52525b;  --unknown-fg:  #a1a1aa;
+  --learning-bg: #854d0e;  --learning-fg: #fde047;
+  --known-bg:    #166534;  --known-fg:    #86efac;
+  --ignored-bg:  #7f1d1d;  --ignored-fg:  #fca5a5;
+
+  --t1: #60a5fa;
+  --t2: #4ade80;
+  --t3: #fb923c;
+  --t4: #f87171;
+  --t5: #a1a1aa;
+
+  --radius: 8px;
+  --font: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ── Header / tabs ──────────────────────────────────────────────── */
+header {
+  padding: 16px 24px 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+header h1 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+
+.tabs { display: flex; gap: 4px; }
+.tab {
+  padding: 8px 20px;
+  border: none; background: transparent;
+  color: var(--muted); font-size: 14px; font-family: inherit;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* ── Main scroll area ───────────────────────────────────────────── */
+main { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+/* ── Recently added strip ───────────────────────────────────────── */
+.recent-section {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; min-width: 0;
+}
+.recent-label {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  white-space: nowrap; flex-shrink: 0;
+}
+.recent-chips {
+  display: flex; gap: 5px; overflow-x: auto; flex: 1;
+  scrollbar-width: none; /* Firefox */
+}
+.recent-chips::-webkit-scrollbar { display: none; }
+.recent-chip {
+  display: flex; align-items: baseline; gap: 5px;
+  padding: 3px 9px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  white-space: nowrap; flex-shrink: 0;
+  transition: border-color .15s;
+}
+.recent-chip:hover { border-color: #3e3e4a; }
+.recent-chip-char { font-size: 15px; line-height: 1.2; }
+.recent-chip-pinyin { font-size: 11px; color: var(--muted); }
+
+/* ── Filter bar (with counts) ───────────────────────────────────── */
+.filter-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 14px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--muted); font-size: 13px; font-family: inherit; cursor: pointer;
+  transition: all .15s;
+}
+.filter-btn:hover { color: var(--text); border-color: #3e3e4a; }
+.filter-btn.active { border-color: var(--accent); color: var(--text); background: #1e1e2e; }
+.filter-count {
+  font-size: 11px; font-weight: 600; padding: 1px 7px;
+  border-radius: 10px; background: var(--surface2);
+}
+.filter-btn.active .filter-count { background: #2e2e4a; }
+.fc-all      { color: var(--text); }
+.fc-unknown  { color: var(--unknown-fg); }
+.fc-learning { color: var(--learning-fg); }
+.fc-known    { color: var(--known-fg); }
+.fc-ignored  { color: var(--ignored-fg); }
+
+.sort-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 16px; font-size: 12px; color: var(--muted);
+}
+.sort-bar select {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); font-family: inherit; font-size: 12px;
+  padding: 4px 8px; border-radius: var(--radius); cursor: pointer;
+}
+.sort-dir-btn {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); border-radius: 6px; padding: 4px 10px;
+  cursor: pointer; font-family: inherit; font-size: 12px;
+}
+
+/* ── Word rows ──────────────────────────────────────────────────── */
+.word-list { display: flex; flex-direction: column; gap: 2px; }
+
+.word-row {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  transition: border-color .15s;
+}
+.word-row:hover { border-color: #3e3e4a; }
+
+.word-row-main {
+  display: grid;
+  grid-template-columns: 60px 1fr 130px 96px auto;
+  align-items: center; gap: 12px;
+  padding: 10px 14px; cursor: pointer; user-select: none;
+}
+@media (max-width: 700px) {
+  .word-row-main { grid-template-columns: 50px 1fr auto; }
+  .col-priority, .col-counts { display: none; }
+}
+
+.col-char { font-size: 28px; line-height: 1; font-weight: 400; }
+.col-meta { min-width: 0; }
+.col-pinyin { font-size: 13px; margin-bottom: 2px; }
+.col-def { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.priority-score { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.priority-bar-track { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+.priority-bar-fill  { height: 100%; border-radius: 2px; transition: width .3s ease; }
+
+.col-counts { font-size: 12px; color: var(--muted); }
+.col-counts span { display: block; }
+
+/* ── Inline row action buttons ──────────────────────────────────── */
+.row-actions { display: flex; gap: 4px; }
+.row-btn {
+  width: 30px; height: 30px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted); font-size: 14px; font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s; flex-shrink: 0;
+}
+.row-btn:hover { transform: scale(1.1); }
+.row-btn-known:hover   { background: #14532d; border-color: #166534; color: var(--known-fg); }
+.row-btn-learning:hover { background: #422006; border-color: #78350f; color: var(--learning-fg); }
+.row-btn-ignore:hover  { background: #450a0a; border-color: #7f1d1d; color: var(--ignored-fg); }
+.row-btn-known.is-active   { background: #14532d; border-color: #166534; color: var(--known-fg); }
+.row-btn-learning.is-active { background: #422006; border-color: #78350f; color: var(--learning-fg); }
+.row-btn-ignore.is-active  { background: #450a0a; border-color: #7f1d1d; color: var(--ignored-fg); }
+
+/* ── Expanded row (context only) ────────────────────────────────── */
+.word-row-expanded {
+  display: none; padding: 10px 14px 12px;
+  border-top: 1px solid var(--border); background: var(--surface2);
+}
+.word-row.open .word-row-expanded { display: block; }
+
+.context-sentence {
+  font-size: 13px; color: var(--muted);
+  font-style: italic; line-height: 1.6;
+}
+.context-sentence em { color: var(--text); font-style: normal; font-weight: 500; }
+.no-context { font-size: 12px; color: var(--muted); }
+
+/* ── Flashcard buttons ──────────────────────────────────────────── */
+.btn {
+  padding: 6px 16px; border-radius: var(--radius);
+  border: 1px solid var(--border); font-family: inherit;
+  font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.btn-known    { background: #14532d; color: var(--known-fg);    border-color: #166534; }
+.btn-known:hover    { background: #166534; }
+.btn-learning { background: #422006; color: var(--learning-fg); border-color: #78350f; }
+.btn-learning:hover { background: #78350f; }
+.btn-ignore   { background: #450a0a; color: var(--ignored-fg);  border-color: #7f1d1d; }
+.btn-ignore:hover   { background: #7f1d1d; }
+
+/* ── Study sub-nav ──────────────────────────────────────────────── */
+.study-subnav {
+  display: flex; gap: 4px; margin-bottom: 20px;
+  border-bottom: 1px solid var(--border); padding-bottom: 0;
+}
+.study-tab {
+  padding: 6px 16px; border: none; background: transparent;
+  color: var(--muted); font-size: 13px; font-family: inherit;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; transition: color .15s, border-color .15s;
+}
+.study-tab:hover { color: var(--text); }
+.study-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* ── AI rationale banner ────────────────────────────────────────── */
+.rationale-banner {
+  background: #1e1e2e; border: 1px solid #3b3b5c;
+  border-radius: var(--radius); padding: 12px 16px;
+  font-size: 13px; color: #a5b4fc; line-height: 1.6;
+  margin-bottom: 20px;
+}
+.rationale-banner::before { content: "🎯 "; }
+
+/* ── Free study section chooser ─────────────────────────────────── */
+.free-sections { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+.free-section-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 20px 24px;
+  cursor: pointer; transition: border-color .15s, background .15s;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.free-section-card:hover { border-color: var(--accent); background: #1a1a24; }
+.free-section-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+.free-section-sub   { font-size: 12px; color: var(--muted); }
+.free-section-count {
+  font-size: 24px; font-weight: 600; color: var(--accent);
+}
+
+/* ── Spinner ────────────────────────────────────────────────────── */
+.spinner {
+  display: inline-block; width: 20px; height: 20px;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.plan-loading { text-align: center; padding: 60px 20px; color: var(--muted); }
+.plan-loading .spinner { width: 32px; height: 32px; margin-bottom: 16px; }
+
+/* ── Handwriting practice ────────────────────────────────────────── */
+.hw-practice { max-width: 600px; margin: 0 auto; }
+
+.hw-header { text-align: center; margin-bottom: 16px; }
+
+.hw-char-hidden {
+  font-size: 88px; line-height: 1; font-weight: 400;
+  filter: blur(14px); user-select: none;
+}
+
+.hw-meta { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+.hw-label {
+  font-size: 11px; color: var(--muted); margin-top: 8px;
+  text-transform: uppercase; letter-spacing: .06em; font-weight: 600;
+}
+
+.hw-writer-wrap {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  margin-bottom: 14px; display: flex; justify-content: center;
+  padding: 20px 0;
+}
+
+#hw-writer { display: block; }
+
+.hw-actions { display: flex; gap: 12px; justify-content: center; margin-bottom: 10px; }
+
+.hw-skip { text-align: center; }
+.hw-skip button {
+  background: none; border: none; color: var(--muted);
+  font-size: 12px; cursor: pointer; font-family: inherit; text-decoration: underline;
+}
+.hw-skip button:hover { color: var(--text); }
+
+/* ── Review / flashcard view ────────────────────────────────────── */
+#view-review { max-width: 600px; margin: 0 auto; }
+
+.session-progress { margin-bottom: 24px; }
+.progress-label {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--muted); margin-bottom: 6px;
+}
+.progress-track { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+.progress-fill  { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s ease; }
+
+.flashcard {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 40px 32px; text-align: center; min-height: 280px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; margin-bottom: 24px;
+}
+.card-char { font-size: 88px; line-height: 1; font-weight: 400; letter-spacing: .02em; }
+.card-meta { display: flex; gap: 16px; font-size: 12px; color: var(--muted); }
+
+.card-answer {
+  width: 100%; border-top: 1px solid var(--border);
+  padding-top: 20px; margin-top: 4px;
+  display: none; flex-direction: column; gap: 10px; align-items: center;
+}
+.card-answer.revealed { display: flex; }
+.card-pinyin     { font-size: 24px; }
+.card-definition { font-size: 14px; color: var(--muted); max-width: 440px; line-height: 1.6; }
+.card-context    { font-size: 13px; color: var(--muted); font-style: italic; max-width: 440px; line-height: 1.6; }
+
+.btn-show {
+  padding: 10px 28px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-size: 14px; font-family: inherit; cursor: pointer;
+  transition: background .15s;
+}
+.btn-show:hover { background: #2e2e38; }
+
+.card-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
+.card-actions .btn { padding: 10px 28px; font-size: 14px; }
+
+.card-empty {
+  font-size: 14px; color: var(--muted); text-align: center; padding: 20px;
+}
+
+/* ── Summary screen ─────────────────────────────────────────────── */
+.summary {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 48px 32px; text-align: center; max-width: 440px; margin: 0 auto;
+}
+.summary h2 { font-size: 22px; margin-bottom: 8px; }
+.summary p  { color: var(--muted); margin-bottom: 28px; }
+.summary-grid { display: flex; gap: 12px; justify-content: center; margin-bottom: 32px; }
+.summary-card {
+  flex: 1; max-width: 100px; padding: 16px 8px;
+  border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface2);
+}
+.s-count { font-size: 28px; font-weight: 600; margin-bottom: 4px; }
+.s-label { font-size: 11px; color: var(--muted); }
+.s-known    .s-count { color: var(--known-fg); }
+.s-learning .s-count { color: var(--learning-fg); }
+.s-ignore   .s-count { color: var(--ignored-fg); }
+
+.btn-restart {
+  padding: 10px 32px; background: var(--accent); border: none;
+  border-radius: var(--radius); color: #fff; font-family: inherit;
+  font-size: 14px; cursor: pointer; transition: opacity .15s;
+}
+.btn-restart:hover { opacity: .85; }
+
+/* ── Toast ──────────────────────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #3f0f0f; border: 1px solid #7f1d1d; color: var(--ignored-fg);
+  padding: 10px 20px; border-radius: var(--radius);
+  font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 999;
+}
+#toast.show { opacity: 1; pointer-events: auto; }
+
+/* ── Misc ───────────────────────────────────────────────────────── */
+.empty-state { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 14px; }
+.loader      { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 13px; }
+
+.tone-1 { color: var(--t1); }
+.tone-2 { color: var(--t2); }
+.tone-3 { color: var(--t3); }
+.tone-4 { color: var(--t4); }
+.tone-5 { color: var(--t5); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>MandarinReader</h1>
+    <nav class="tabs">
+      <button class="tab active" data-view="dashboard">Dashboard</button>
+      <button class="tab"        data-view="review">Review <span id="queue-badge"></span></button>
+    </nav>
+  </header>
+  <main id="main-content">
+    <div class="loader">Loading vocabulary…</div>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:8000/api';
+
+// ── State ────────────────────────────────────────────────────────
+const S = {
+  allWords:      [],
+  queueMap:      new Map(),
+  recentWords:   [],
+  filter:        'all',
+  sortKey:       'priority_score',
+  sortDir:       'desc',
+  expandedId:    null,
+  activeView:    'dashboard',
+  session:       { cards: [], index: 0, revealed: false, tally: {known:0,learning:0,ignore:0}, done: false, handwriting: { active: false, phase: 'watch' } },
+  reviewSubView: 'plan',    // 'plan' | 'free'
+  studyPlan:     { rationale: '', words: [], loading: false },
+  freeStudy:     { known_practice: [], new_learning: [] },
+  freeSection:   null,      // null | 'known' | 'new_learning'
+};
+
+// ── Utilities ────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function trunc(s, n=58) {
+  if (!s) return '';
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+function renderPinyin(raw) {
+  if (!raw) return '';
+  return raw.split(' ').map(syl => {
+    const m = syl.match(/(\d)$/);
+    const t = m ? m[1] : '5';
+    return `<span class="tone-${t}">${esc(syl)}</span>`;
+  }).join(' ');
+}
+
+function famClass(score) {
+  return { '-1':'ignored', 0:'unknown', 1:'learning', 2:'known' }[score] ?? 'unknown';
+}
+function famLabel(score) {
+  return { '-1':'Ignored', 0:'Unknown', 1:'Learning', 2:'Known' }[score] ?? '?';
+}
+
+function priorityBarStyle(ratio) {
+  const r = Math.round(90  + ratio * 165);
+  const g = Math.round(0   + ratio * 68);
+  const b = Math.round(0   + ratio * 68);
+  return `background:rgb(${r},${g},${b})`;
+}
+
+function localSrs(word, result) {
+  if (result === 'ignore') return { familiarity_score: -1, next_review_date: null };
+  const today = new Date();
+  const addDays = n => { const d = new Date(today); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+  let ease = parseFloat(word.ease_factor ?? 2.5);
+  let interval = parseInt(word.srs_interval_days ?? 1);
+  if (result === 'known') {
+    ease = Math.min(ease + 0.1, 4.0);
+    interval = Math.max(Math.round(interval * ease), 2);
+    return { familiarity_score: 2, next_review_date: addDays(interval) };
+  }
+  ease = Math.max(ease - 0.2, 1.3);
+  const todayStr = today.toISOString().slice(0, 10);
+  return { familiarity_score: 1, next_review_date: todayStr };
+}
+
+// ── Data loading ─────────────────────────────────────────────────
+async function loadAll() {
+  const [wr, qr, rr, fr] = await Promise.all([
+    fetch(`${API}/words?limit=500`),
+    fetch(`${API}/queue?n=50`),
+    fetch(`${API}/recent`),
+    fetch(`${API}/study/free`),
+  ]);
+  if (!wr.ok || !qr.ok) throw new Error('API request failed');
+  const [words, queue, recent, freeStudy] = await Promise.all([
+    wr.json(), qr.json(),
+    rr.ok ? rr.json() : [],
+    fr.ok ? fr.json() : { known_practice: [], new_learning: [] },
+  ]);
+  S.allWords = words;
+  S.recentWords = recent;
+  S.freeStudy = freeStudy;
+  S.queueMap.clear();
+  queue.forEach(item => S.queueMap.set(item.id, item));
+  resetSession(queue);
+}
+
+async function loadStudyPlan() {
+  S.studyPlan = { rationale: '', words: [], loading: true };
+  render();
+  try {
+    const r = await fetch(`${API}/study/plan`);
+    if (r.ok) {
+      const data = await r.json();
+      S.studyPlan = { rationale: data.rationale, words: data.words, loading: false };
+    } else {
+      S.studyPlan = { rationale: 'Could not load study plan.', words: [], loading: false };
+    }
+  } catch(e) {
+    S.studyPlan = { rationale: 'Could not load study plan.', words: [], loading: false };
+  }
+  render();
+}
+
+async function loadQueue() {
+  const r = await fetch(`${API}/queue?n=50`);
+  if (!r.ok) return;
+  const queue = await r.json();
+  S.queueMap.clear();
+  queue.forEach(item => S.queueMap.set(item.id, item));
+  resetSession(queue);
+}
+
+function resetSession(queue) {
+  S.session = { cards: queue, index: 0, revealed: false, tally: {known:0,learning:0,ignore:0}, done: false, handwriting: { active: false, phase: 'watch' } };
+  updateBadge();
+}
+
+function updateBadge() {
+  const el = document.getElementById('queue-badge');
+  if (!el) return;
+  const n = S.session.cards.length;
+  el.textContent = n > 0 ? `(${n})` : '';
+  el.style.color = n > 0 ? 'var(--learning-fg)' : '';
+}
+
+// ── API review call ───────────────────────────────────────────────
+async function postReview(wordId, result) {
+  const res = await fetch(`${API}/review/${wordId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ result }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ── Recently added ────────────────────────────────────────────────
+function renderRecentlyAdded() {
+  if (S.recentWords.length === 0) return '';
+  const chips = S.recentWords.map(w =>
+    `<div class="recent-chip" title="${esc(w.definition ?? w.traditional)}">
+      <span class="recent-chip-char">${esc(w.traditional)}</span>
+      <span class="recent-chip-pinyin">${renderPinyin(w.pinyin)}</span>
+    </div>`
+  ).join('');
+  return `<div class="recent-section">
+    <span class="recent-label">Recent</span>
+    <div class="recent-chips">${chips}</div>
+  </div>`;
+}
+
+// ── Dashboard render ──────────────────────────────────────────────
+function filteredWords() {
+  const scoreMap = { unknown:0, learning:1, known:2, ignored:-1 };
+  let words = S.filter === 'all' ? S.allWords : S.allWords.filter(w => w.familiarity_score === scoreMap[S.filter]);
+  const dir = S.sortDir === 'asc' ? 1 : -1;
+  return [...words].sort((a, b) => {
+    const av = a[S.sortKey] ?? 0, bv = b[S.sortKey] ?? 0;
+    return typeof av === 'string' ? dir * av.localeCompare(bv) : dir * (av - bv);
+  });
+}
+
+function renderDashboard() {
+  const words  = filteredWords();
+  const total  = S.allWords.length;
+  const counts = { unknown:0, learning:0, known:0, ignored:0 };
+  S.allWords.forEach(w => { const k = famClass(w.familiarity_score); counts[k] = (counts[k]||0)+1; });
+  const maxPrio = words.reduce((m, w) => Math.max(m, w.priority_score ?? 0), 0) || 1;
+
+  const filterDefs = [
+    { key:'all',      label:'All',      count:total,           cls:'fc-all' },
+    { key:'unknown',  label:'Unknown',  count:counts.unknown,  cls:'fc-unknown' },
+    { key:'learning', label:'Learning', count:counts.learning, cls:'fc-learning' },
+    { key:'known',    label:'Known',    count:counts.known,    cls:'fc-known' },
+    { key:'ignored',  label:'Ignored',  count:counts.ignored,  cls:'fc-ignored' },
+  ];
+  const filters = filterDefs.map(f =>
+    `<button class="filter-btn${S.filter===f.key?' active':''}" data-filter="${f.key}">
+      ${f.label}<span class="filter-count ${f.cls}">${f.count}</span>
+    </button>`
+  ).join('');
+
+  const sortOpts = [
+    ['priority_score','Priority'],['encounter_count','Encounters'],
+    ['familiarity_score','Familiarity'],['traditional','Character'],
+  ].map(([v,l]) => `<option value="${v}"${S.sortKey===v?' selected':''}>${l}</option>`).join('');
+
+  const rows = words.map(w => {
+    const fc     = famClass(w.familiarity_score);
+    const ratio  = (w.priority_score ?? 0) / maxPrio;
+    const qItem  = S.queueMap.get(w.id);
+    const ctx    = qItem?.context_sentence;
+    const isOpen = S.expandedId === w.id;
+
+    const ctxHtml = ctx
+      ? `<div class="context-sentence">${esc(ctx).replace(new RegExp(esc(w.traditional),'g'),`<em>${esc(w.traditional)}</em>`)}</div>`
+      : `<div class="no-context">No context sentence on record.</div>`;
+
+    return `<div class="word-row${isOpen?' open':''}" data-id="${w.id}">
+      <div class="word-row-main" data-toggle="${w.id}">
+        <div class="col-char">${esc(w.traditional)}</div>
+        <div class="col-meta">
+          <div class="col-pinyin">${renderPinyin(w.pinyin)}</div>
+          <div class="col-def">${esc(trunc(w.definition))}</div>
+        </div>
+        <div class="col-priority">
+          <div class="priority-score">${(w.priority_score??0).toFixed(1)}</div>
+          <div class="priority-bar-track"><div class="priority-bar-fill" style="width:${(ratio*100).toFixed(1)}%;${priorityBarStyle(ratio)}"></div></div>
+        </div>
+        <div class="col-counts">
+          <span title="Encounters">✦ ${w.encounter_count} seen</span>
+          <span title="Source types">⊕ ${w.source_diversity_count} source${w.source_diversity_count!==1?'s':''}</span>
+        </div>
+        <div class="row-actions" title="Mark as…">
+          <button class="row-btn row-btn-known${fc==='known'?' is-active':''}"    data-review="${w.id}" data-result="known"    title="Known">✓</button>
+          <button class="row-btn row-btn-learning${fc==='learning'?' is-active':''}" data-review="${w.id}" data-result="learning" title="Still Learning">↺</button>
+          <button class="row-btn row-btn-ignore${fc==='ignored'?' is-active':''}"  data-review="${w.id}" data-result="ignore"   title="Ignore">—</button>
+        </div>
+      </div>
+      <div class="word-row-expanded">${ctxHtml}</div>
+    </div>`;
+  }).join('');
+
+  return `${renderRecentlyAdded()}
+  <div class="filter-bar">${filters}</div>
+  <div class="sort-bar">Sort by
+    <select id="sort-sel">${sortOpts}</select>
+    <button class="sort-dir-btn" id="sort-dir">${S.sortDir==='desc'?'↓ Desc':'↑ Asc'}</button>
+  </div>
+  <div id="word-list">${words.length ? `<div class="word-list">${rows}</div>` : '<div class="empty-state">No words match this filter.</div>'}</div>`;
+}
+
+// ── Handwriting practice UI ───────────────────────────────────────
+function renderHandwriting(session) {
+  const card     = session.cards[session.index];
+  const isRecall = session.handwriting.phase === 'recall';
+
+  const charHtml = isRecall
+    ? `<div class="hw-char-hidden">${esc(card.traditional)}</div>`
+    : `<div class="card-char">${esc(card.traditional)}</div>`;
+
+  const metaHtml = isRecall ? '' :
+    `<div class="hw-meta">${renderPinyin(card.pinyin)} · ${esc(card.definition ?? '')}</div>`;
+
+  const labelHtml = isRecall
+    ? `<div class="hw-label">Write from memory</div>`
+    : `<div class="hw-label">Watch the stroke order</div>`;
+
+  const bodyHtml = isRecall
+    ? ''
+    : `<div class="hw-writer-wrap"><div id="hw-writer"></div></div>
+       <div class="hw-actions">
+         <button class="btn" id="hw-replay" style="background:var(--surface2)">Replay ↺</button>
+         <button class="btn btn-learning" id="hw-next">I wrote it →</button>
+       </div>`;
+
+  const doneHtml = isRecall
+    ? `<div class="hw-actions">
+         <button class="btn btn-learning" id="hw-done">Done Practicing</button>
+       </div>`
+    : '';
+
+  return `<div class="hw-practice">
+    <div class="hw-header">${charHtml}${metaHtml}${labelHtml}</div>
+    ${bodyHtml}${doneHtml}
+    <div class="hw-skip"><button id="hw-skip">Skip practice</button></div>
+  </div>`;
+}
+
+function finishHandwriting() {
+  S.session.handwriting = { active: false, phase: 'watch' };
+  S.session.index++;
+  S.session.revealed = false;
+  if (S.session.index >= S.session.cards.length) {
+    S.session.done = true;
+    loadQueue().catch(() => {});
+  }
+  render();
+}
+
+function bindHandwriting() {
+  document.getElementById('hw-skip')?.addEventListener('click', finishHandwriting);
+  document.getElementById('hw-done')?.addEventListener('click', finishHandwriting);
+
+  const writerEl = document.getElementById('hw-writer');
+  if (!writerEl) return;   // recall phase — no writer div
+
+  const card  = S.session.cards[S.session.index];
+  const chars = [...card.traditional];  // split into individual CJK characters
+  const avail = writerEl.parentElement.clientWidth - 40;
+  const size  = Math.min(Math.floor(avail / chars.length), 200);
+
+  // Create one child div per character
+  writerEl.style.display = 'flex';
+  writerEl.style.gap = '8px';
+  chars.forEach((_, i) => {
+    const div = document.createElement('div');
+    div.id = `hw-writer-${i}`;
+    writerEl.appendChild(div);
+  });
+
+  const writers = new Array(chars.length).fill(null);
+  let settled = 0;
+
+  function animateAll() {
+    function next(i) {
+      if (i >= writers.length) return;
+      const w = writers[i];
+      if (w) w.animateCharacter({ onComplete: () => next(i + 1) });
+      else next(i + 1);
+    }
+    next(0);
+  }
+
+  chars.forEach((ch, i) => {
+    try {
+      writers[i] = HanziWriter.create(`hw-writer-${i}`, ch, {
+        width: size, height: size,
+        padding: 8,
+        strokeColor: '#e4e4e7',
+        outlineColor: '#3f3f46',
+        drawingColor: '#6366f1',
+        strokeAnimationSpeed: 0.8,
+        delayBetweenStrokes: 150,
+        showOutline: true,
+        onLoadCharDataSuccess: () => { if (++settled === chars.length) animateAll(); },
+        onLoadCharDataError:   () => {
+          writers[i] = null;
+          const el = document.getElementById(`hw-writer-${i}`);
+          if (el) el.innerHTML =
+            `<div style="color:var(--muted);font-size:11px;padding:8px;text-align:center">${esc(ch)}<br>?</div>`;
+          if (++settled === chars.length) animateAll();
+        },
+      });
+    } catch(e) { /* HanziWriter not available */ }
+  });
+
+  document.getElementById('hw-replay')?.addEventListener('click', animateAll);
+
+  document.getElementById('hw-next')?.addEventListener('click', () => {
+    S.session.handwriting.phase = 'recall';
+    render();
+  });
+}
+
+// ── Flashcard UI (shared) ─────────────────────────────────────────
+function renderFlashcards(session) {
+  if (session.handwriting?.active) return renderHandwriting(session);
+  const { cards, index, revealed, tally, done } = session;
+
+  if (done || (cards.length > 0 && index >= cards.length)) {
+    return `<div class="summary">
+      <h2>Session Complete</h2>
+      <p>You reviewed ${index} word${index!==1?'s':''}.</p>
+      <div class="summary-grid">
+        <div class="summary-card s-known"><div class="s-count">${tally.known}</div><div class="s-label">Known</div></div>
+        <div class="summary-card s-learning"><div class="s-count">${tally.learning}</div><div class="s-label">Learning</div></div>
+        <div class="summary-card s-ignore"><div class="s-count">${tally.ignore}</div><div class="s-label">Ignored</div></div>
+      </div>
+      <button class="btn-restart" id="btn-restart">Back</button>
+    </div>`;
+  }
+
+  if (cards.length === 0) {
+    return `<div class="flashcard"><div class="card-empty">
+      <div style="font-size:40px;margin-bottom:16px">🎉</div>
+      <div style="font-size:16px;color:var(--text);margin-bottom:8px">Nothing here yet!</div>
+      <div>No words in this deck.</div>
+    </div></div>`;
+  }
+
+  const card = cards[index];
+  const pct  = (index / cards.length * 100).toFixed(1);
+
+  return `<div class="session-progress">
+    <div class="progress-label"><span>${index} of ${cards.length}</span><span>${Math.round(index/cards.length*100)}%</span></div>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+  </div>
+
+  <div class="flashcard">
+    <div class="card-char">${esc(card.traditional)}</div>
+    <div class="card-meta">
+      <span title="Priority">▲ ${(card.priority_score??0).toFixed(1)}</span>
+      <span title="Encounters">✦ ${card.encounter_count} seen</span>
+    </div>
+    <div class="card-answer${revealed?' revealed':''}">
+      <div class="card-pinyin">${renderPinyin(card.pinyin)}</div>
+      <div class="card-definition">${esc(card.definition ?? '—')}</div>
+      ${card.context_sentence ? `<div class="card-context">"${esc(card.context_sentence)}"</div>` : ''}
+    </div>
+  </div>
+
+  ${!revealed
+    ? `<div style="text-align:center"><button class="btn-show" id="btn-show">Show Answer</button></div>`
+    : `<div class="card-actions">
+        <button class="btn btn-known"    data-card="known">✓ Known</button>
+        <button class="btn btn-learning" data-card="learning">↺ Still Learning</button>
+        <button class="btn btn-ignore"   data-card="ignore">— Ignore</button>
+      </div>`
+  }`;
+}
+
+// ── Today's Plan render ───────────────────────────────────────────
+function renderPlanView() {
+  const { rationale, words, loading } = S.studyPlan;
+
+  if (loading) {
+    return `<div class="plan-loading">
+      <div class="spinner"></div>
+      <div style="margin-top:12px">Claude is preparing your study plan…</div>
+    </div>`;
+  }
+
+  if (S.session.done || (S.session.cards.length > 0 && S.session.index >= S.session.cards.length)) {
+    return renderFlashcards(S.session);
+  }
+
+  if (S.session.cards.length > 0 && S.session.index < S.session.cards.length) {
+    const ratHtml = rationale
+      ? `<div class="rationale-banner">${esc(rationale)}</div>`
+      : '';
+    return ratHtml + renderFlashcards(S.session);
+  }
+
+  // Show plan summary before starting
+  if (words.length === 0) {
+    return `<div class="flashcard"><div class="card-empty">
+      <div style="font-size:40px;margin-bottom:16px">🎉</div>
+      <div style="font-size:16px;color:var(--text);margin-bottom:8px">All caught up!</div>
+      <div>${esc(rationale || 'No words due for review right now.')}</div>
+    </div></div>`;
+  }
+
+  const wordList = words.map(w =>
+    `<span style="font-size:20px;margin-right:8px" title="${esc(w.definition ?? '')}">${esc(w.traditional)}</span>`
+  ).join('');
+
+  return `
+    ${rationale ? `<div class="rationale-banner">${esc(rationale)}</div>` : ''}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin-bottom:20px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em">Today's Words (${words.length})</div>
+      <div style="line-height:2">${wordList}</div>
+    </div>
+    <div style="text-align:center">
+      <button class="btn-restart" id="btn-start-plan" style="font-size:15px;padding:12px 36px">Start Flashcards</button>
+    </div>`;
+}
+
+// ── Free Study render ─────────────────────────────────────────────
+function renderFreeView() {
+  // If a section is active, show its flashcards
+  if (S.freeSection) {
+    const { cards, index, done } = S.session;
+    if (done || index >= cards.length) {
+      // After session, go back to section chooser
+      return renderFlashcards(S.session);
+    }
+    return renderFlashcards(S.session);
+  }
+
+  const { known_practice, new_learning } = S.freeStudy;
+  return `<div class="free-sections">
+    <div class="free-section-card" id="free-known">
+      <div>
+        <div class="free-section-title">Sight Reading Practice</div>
+        <div class="free-section-sub">Review words you already know — reinforce recognition</div>
+      </div>
+      <div class="free-section-count">${known_practice.length}</div>
+    </div>
+    <div class="free-section-card" id="free-new">
+      <div>
+        <div class="free-section-title">Worth Another Look</div>
+        <div class="free-section-sub">Recently marked "Still Learning" — give them another pass</div>
+      </div>
+      <div class="free-section-count">${new_learning.length}</div>
+    </div>
+  </div>`;
+}
+
+// ── Review tab render ─────────────────────────────────────────────
+function renderReview() {
+  const subNav = `<div class="study-subnav">
+    <button class="study-tab${S.reviewSubView==='plan'?' active':''}" data-subtab="plan">Today's Plan</button>
+    <button class="study-tab${S.reviewSubView==='free'?' active':''}" data-subtab="free">Free Study</button>
+  </div>`;
+
+  if (S.reviewSubView === 'plan') {
+    return subNav + renderPlanView();
+  } else {
+    return subNav + renderFreeView();
+  }
+}
+
+// ── Render dispatcher ─────────────────────────────────────────────
+function render() {
+  const main = document.getElementById('main-content');
+  if (S.activeView === 'dashboard') {
+    main.innerHTML = `<div id="view-dashboard">${renderDashboard()}</div>`;
+    bindDashboard();
+  } else {
+    main.innerHTML = `<div id="view-review">${renderReview()}</div>`;
+    bindReview();
+  }
+}
+
+// ── Dashboard event binding ───────────────────────────────────────
+function bindDashboard() {
+  document.querySelectorAll('.filter-btn').forEach(btn =>
+    btn.addEventListener('click', () => { S.filter = btn.dataset.filter; S.expandedId = null; render(); })
+  );
+
+  document.getElementById('sort-sel')?.addEventListener('change', e => { S.sortKey = e.target.value; render(); });
+  document.getElementById('sort-dir')?.addEventListener('click', () => { S.sortDir = S.sortDir==='desc'?'asc':'desc'; render(); });
+
+  document.getElementById('word-list')?.addEventListener('click', async e => {
+    const reviewBtn = e.target.closest('[data-review]');
+    const toggleEl  = e.target.closest('[data-toggle]');
+
+    if (reviewBtn) {
+      e.stopPropagation();
+      const id = parseInt(reviewBtn.dataset.review);
+      const result = reviewBtn.dataset.result;
+      const word = S.allWords.find(w => w.id === id);
+      if (!word) return;
+      const prev = { ...word };
+      Object.assign(word, localSrs(word, result));
+      S.expandedId = null;
+      render();
+      try {
+        const data = await postReview(id, result);
+        Object.assign(word, { familiarity_score: data.familiarity_score, next_review_date: data.next_review_date });
+        render();
+      } catch(err) {
+        Object.assign(word, prev);
+        toast(`Review failed: ${err.message}`);
+        render();
+      }
+      return;
+    }
+
+    if (toggleEl) {
+      const id = parseInt(toggleEl.dataset.toggle);
+      S.expandedId = S.expandedId === id ? null : id;
+      render();
+    }
+  });
+}
+
+// ── Review event binding ──────────────────────────────────────────
+function bindReview() {
+  // Sub-tab switching
+  document.querySelectorAll('.study-tab').forEach(tab =>
+    tab.addEventListener('click', () => {
+      const next = tab.dataset.subtab;
+      if (next === S.reviewSubView) return;
+      S.session.handwriting = { active: false, phase: 'watch' };
+      S.reviewSubView = next;
+      S.freeSection = null;
+      if (next === 'plan' && !S.studyPlan.loading && S.studyPlan.words.length === 0 && !S.studyPlan.rationale) {
+        loadStudyPlan();
+      } else {
+        // Reset plan session when switching to plan tab so pre-session summary shows
+        if (next === 'plan') {
+          resetSession(S.studyPlan.words);
+        }
+        render();
+      }
+    })
+  );
+
+  if (S.session.handwriting?.active) {
+    bindHandwriting();
+    return;
+  }
+
+  document.getElementById('btn-show')?.addEventListener('click', () => {
+    S.session.revealed = true; render();
+  });
+
+  // Free study section chooser
+  document.getElementById('free-known')?.addEventListener('click', () => {
+    S.freeSection = 'known';
+    resetSession(S.freeStudy.known_practice);
+    render();
+  });
+  document.getElementById('free-new')?.addEventListener('click', () => {
+    S.freeSection = 'new_learning';
+    resetSession(S.freeStudy.new_learning);
+    render();
+  });
+
+  // Plan: start flashcards
+  document.getElementById('btn-start-plan')?.addEventListener('click', () => {
+    resetSession(S.studyPlan.words);
+    render();
+  });
+
+  document.querySelectorAll('[data-card]').forEach(btn =>
+    btn.addEventListener('click', async () => {
+      const result = btn.dataset.card;
+      const card   = S.session.cards[S.session.index];
+      S.session.tally[result]++;
+      const word = S.allWords.find(w => w.id === card.id);
+      const prev = word ? { ...word } : null;
+      if (word) Object.assign(word, localSrs(word, result));
+      S.session.revealed = false;
+
+      if (result === 'learning') {
+        S.session.handwriting = { active: true, phase: 'watch' };
+        render();
+        postReview(card.id, result)
+          .then(data => { if (word) Object.assign(word, { familiarity_score: data.familiarity_score, next_review_date: data.next_review_date }); })
+          .catch(err  => { if (word && prev) Object.assign(word, prev); toast(`Sync failed: ${err.message}`); });
+        return;
+      }
+
+      S.session.index++;
+      if (S.session.index >= S.session.cards.length) {
+        S.session.done = true;
+        loadQueue().catch(() => {});
+      }
+      render();
+      try {
+        const data = await postReview(card.id, result);
+        if (word) Object.assign(word, { familiarity_score: data.familiarity_score, next_review_date: data.next_review_date });
+      } catch(err) {
+        if (word && prev) Object.assign(word, prev);
+        toast(`Sync failed: ${err.message}`);
+      }
+    })
+  );
+
+  document.getElementById('btn-restart')?.addEventListener('click', () => {
+    S.session.done = false;
+    S.session.index = 0;
+    S.session.tally = { known: 0, learning: 0, ignore: 0 };
+    if (S.reviewSubView === 'free' && S.freeSection) {
+      S.freeSection = null;
+    } else if (S.reviewSubView === 'plan') {
+      // Reset to pre-session summary
+      resetSession([]);
+      S.studyPlan = { rationale: '', words: [], loading: false };
+      loadStudyPlan();
+      return;
+    }
+    render();
+  });
+}
+
+// ── Tab switching ─────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab =>
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    S.activeView = tab.dataset.view;
+    if (S.activeView === 'review' && !S.studyPlan.rationale && !S.studyPlan.loading) {
+      loadStudyPlan();
+    } else {
+      render();
+    }
+  })
+);
+
+// ── Boot ──────────────────────────────────────────────────────────
+(async () => {
+  try {
+    await loadAll();
+    render();
+  } catch(e) {
+    document.getElementById('main-content').innerHTML =
+      `<div class="empty-state">Failed to connect to backend at <code>${API}</code><br><br><small>${e.message}</small></div>`;
+  }
+})();
+</script>
+</body>
+</html>

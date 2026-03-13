@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MandarinReader Settings</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      max-width: 480px;
+      margin: 32px auto;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      color: #1a1a1a;
+      padding: 0 16px;
+    }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 24px; }
+    .field { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+    .hint {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    input:focus { outline: 2px solid #c0392b; border-color: transparent; }
+    .actions { display: flex; align-items: center; gap: 12px; margin-top: 24px; }
+    button {
+      padding: 9px 20px;
+      background: #c0392b;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:hover { background: #a93226; }
+    #saved { color: #27ae60; font-size: 13px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>MandarinReader Settings</h1>
+
+  <div class="field">
+    <label for="apiKey">Claude API Key</label>
+    <p class="hint">Used to analyse page content. Your key is stored locally in Chrome and never sent anywhere except Anthropic's API.</p>
+    <input type="password" id="apiKey" placeholder="sk-ant-api03-…" autocomplete="off">
+  </div>
+
+  <div class="field">
+    <label for="backendUrl">Backend URL</label>
+    <p class="hint">URL of your running MandarinReader backend server.</p>
+    <input type="text" id="backendUrl" placeholder="http://localhost:8000">
+  </div>
+
+  <div class="actions">
+    <button id="saveBtn">Save Settings</button>
+    <span id="saved">Settings saved!</span>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

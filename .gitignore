@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Environment / secrets
+.env
+.env.*
+*.env
+
+# CC-CEDICT dictionary (large binary, download separately)
+backend/data/cedict_ts.u8
+backend/data/*.u8
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Claude Code
+.claude/
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Test artifacts
+htmlcov/
+.coverage
