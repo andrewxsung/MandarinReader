@@ -24,6 +24,7 @@ async function handleCapture(tabId) {
   const settings = await chrome.storage.sync.get({
     claudeApiKey: "",
     backendUrl: "http://localhost:8000",
+    mrApiKey: "",
   });
 
   if (!settings.claudeApiKey) {
@@ -71,7 +72,10 @@ async function handleCapture(tabId) {
   try {
     const resp = await fetch(`${settings.backendUrl}/api/ingest`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(settings.mrApiKey && { "X-API-Key": settings.mrApiKey }),
+      },
       body: JSON.stringify({
         url: pageData.url,
         title: pageData.title,
