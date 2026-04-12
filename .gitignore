@@ -37,6 +37,9 @@ backend/data/*.u8
 *.swp
 *.swo
 
+# Superpowers brainstorm sessions
+.superpowers/
+
 # Logs
 *.log
 
