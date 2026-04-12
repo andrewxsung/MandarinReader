@@ -150,6 +150,46 @@ Backend URL and API key are stored in the app via a simple Settings screen (no i
 
 ---
 
+## Project Structure
+
+The iOS app lives as a new top-level `ios/` directory alongside `backend/` and `extension/` in the existing MondarinReader monorepo. This keeps API and app changes in the same commit/PR.
+
+```
+MandarinReader/
+├── backend/
+├── extension/
+├── ios/
+│   ├── MandarinReader.xcodeproj
+│   └── MandarinReader/
+│       ├── App/
+│       │   ├── MandarinReaderApp.swift   # @main entry point
+│       │   └── SettingsView.swift        # backend URL + API key config
+│       ├── Networking/
+│       │   ├── APIClient.swift           # URLSession wrapper, auth header
+│       │   └── Models.swift              # WordQueueItem, PendingReview
+│       ├── Session/
+│       │   └── SessionViewModel.swift    # all session state + business logic
+│       ├── Views/
+│       │   ├── StartSessionView.swift
+│       │   ├── PracticeView.swift        # main card screen
+│       │   ├── FeedbackOverlay.swift     # correct/incorrect overlay
+│       │   └── SummaryView.swift
+│       ├── Canvas/
+│       │   └── PKCanvasWrapper.swift     # UIViewRepresentable for PencilKit
+│       └── Recognition/
+│           └── CharacterRecognizer.swift # Vision framework wrapper
+└── docs/
+```
+
+Add to `.gitignore`:
+```
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcworkspace/xcuserdata/
+ios/DerivedData/
+```
+
+---
+
 ## Out of Scope (for now)
 
 - Offline-first / persistent local storage
