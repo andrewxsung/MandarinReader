@@ -40,6 +40,14 @@ backend/data/*.u8
 # Superpowers brainstorm sessions
 .superpowers/
 
+# Xcode / iOS
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+DerivedData/
+ios/build/
+
 # Logs
 *.log
 
