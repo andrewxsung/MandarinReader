@@ -11,32 +11,19 @@ final class AppSettings: ObservableObject {
     }
 
     private let defaults: UserDefaults
-    private var cancellables = Set<AnyCancellable>()
 
-    @Published var backendURL: String = ""
-    @Published var apiKey: String = ""
+    @Published var backendURL: String {
+        didSet { defaults.set(backendURL, forKey: Key.backendURL) }
+    }
+
+    @Published var apiKey: String {
+        didSet { defaults.set(apiKey, forKey: Key.apiKey) }
+    }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-
-        // Load from UserDefaults
         self.backendURL = defaults.string(forKey: Key.backendURL) ?? ""
         self.apiKey = defaults.string(forKey: Key.apiKey) ?? ""
-
-        // Set up publishers to persist changes
-        self.$backendURL
-            .dropFirst()
-            .sink { [defaults] value in
-                defaults.set(value, forKey: Key.backendURL)
-            }
-            .store(in: &cancellables)
-
-        self.$apiKey
-            .dropFirst()
-            .sink { [defaults] value in
-                defaults.set(value, forKey: Key.apiKey)
-            }
-            .store(in: &cancellables)
     }
 
     var isConfigured: Bool {

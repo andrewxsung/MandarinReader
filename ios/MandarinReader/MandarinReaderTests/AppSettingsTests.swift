@@ -1,6 +1,7 @@
 import XCTest
 @testable import MandarinReader
 
+@MainActor
 final class AppSettingsTests: XCTestCase {
 
     var defaults: UserDefaults!
@@ -19,16 +20,12 @@ final class AppSettingsTests: XCTestCase {
 
     func test_persistsBackendURL() {
         settings.backendURL = "https://example.com"
-
-        let reloaded = AppSettings(defaults: defaults)
-        XCTAssertEqual(reloaded.backendURL, "https://example.com")
+        XCTAssertEqual(defaults.string(forKey: "settings.backendURL"), "https://example.com")
     }
 
     func test_persistsAPIKey() {
         settings.apiKey = "secret-123"
-
-        let reloaded = AppSettings(defaults: defaults)
-        XCTAssertEqual(reloaded.apiKey, "secret-123")
+        XCTAssertEqual(defaults.string(forKey: "settings.apiKey"), "secret-123")
     }
 
     func test_isConfigured_falseWhenURLMissing() {
