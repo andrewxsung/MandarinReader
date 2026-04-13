@@ -1,17 +1,14 @@
-//
-//  MandarinReaderApp.swift
-//  MandarinReader
-//
-//  Created by Andrew on 4/12/26.
-//
-
 import SwiftUI
 
 @main
 struct MandarinReaderApp: App {
+
+    @StateObject private var settings = AppSettings()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            StartSessionView()
+                .environmentObject(settings)
         }
     }
 }
