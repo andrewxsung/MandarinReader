@@ -1,5 +1,4 @@
 import SwiftUI
-import PencilKit
 
 struct PracticeView: View {
 
@@ -7,12 +6,10 @@ struct PracticeView: View {
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
 
-    @State private var drawing = PKDrawing()
-    @State private var isRecognizing = false
+    @State private var input = ""
     @State private var flashVisible = true
     @State private var showSummary = false
-
-    private let recognizer = CharacterRecognizer()
+    @FocusState private var inputFocused: Bool
 
     var body: some View {
         Group {
@@ -42,7 +39,7 @@ struct PracticeView: View {
                 }
                 Spacer()
                 Button("Skip →") {
-                    resetCanvas()
+                    resetInput()
                     session.skip()
                     if session.isSessionComplete { showSummary = true }
                 }
@@ -57,19 +54,27 @@ struct PracticeView: View {
                     .fill(Color.white)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(canvasBorderColor, lineWidth: 3)
+                            .stroke(inputBorderColor, lineWidth: 3)
                     )
 
-                PKCanvasWrapper(drawing: $drawing)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .allowsHitTesting(session.phase == .writing)
+                VStack(spacing: 12) {
+                    TextField("", text: $input)
+                        .font(.system(size: 120, weight: .regular))
+                        .multilineTextAlignment(.center)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .focused($inputFocused)
+                        .disabled(session.phase != .writing)
+                        .onSubmit { if session.phase == .writing { submit() } }
+
+                    Text("Use the Chinese handwriting keyboard")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
 
                 if case .feedback(let correct) = session.phase {
                     FeedbackOverlay(character: word.traditional, correct: correct)
-                }
-
-                if isRecognizing {
-                    ProgressView().scaleEffect(1.5)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -82,9 +87,11 @@ struct PracticeView: View {
         .task(id: word.id) {
             if session.phase == .flash {
                 flashVisible = true
+                inputFocused = false
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 flashVisible = false
                 session.advanceFromFlash()
+                inputFocused = true
             }
         }
     }
@@ -120,7 +127,8 @@ struct PracticeView: View {
     private func controls() -> some View {
         HStack(spacing: 12) {
             Button("Clear") {
-                resetCanvas()
+                resetInput()
+                inputFocused = true
             }
             .frame(maxWidth: .infinity)
             .padding()
@@ -160,13 +168,13 @@ struct PracticeView: View {
 
     private var primaryDisabled: Bool {
         switch session.phase {
-        case .writing: return drawing.strokes.isEmpty || isRecognizing
+        case .writing: return input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .flash: return true
         default: return false
         }
     }
 
-    private var canvasBorderColor: Color {
+    private var inputBorderColor: Color {
         switch session.phase {
         case .feedback(true): return .green
         case .feedback(false): return .red
@@ -191,33 +199,30 @@ struct PracticeView: View {
     private func primaryAction() {
         switch session.phase {
         case .writing:
-            submitForRecognition()
+            submit()
         case .feedback:
             session.advanceRound()
-            resetCanvas()
-            if session.isSessionComplete { showSummary = true }
+            resetInput()
+            if session.isSessionComplete {
+                showSummary = true
+            } else {
+                inputFocused = true
+            }
         default:
             break
         }
     }
 
-    private func submitForRecognition() {
+    private func submit() {
         guard let word = session.currentWord else { return }
-        isRecognizing = true
-        let canvasSize = CGSize(width: 600, height: 600)
-        let image = drawing.rasterize(size: canvasSize)
-        Task {
-            let recognized = await recognizer.recognize(image: image)
-            let correct = recognizer.matches(recognized: recognized, target: word.traditional)
-            await MainActor.run {
-                isRecognizing = false
-                session.submit(correct: correct)
-            }
-        }
+        let typed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let correct = typed == word.traditional
+        inputFocused = false
+        session.submit(correct: correct)
     }
 
-    private func resetCanvas() {
-        drawing = PKDrawing()
+    private func resetInput() {
+        input = ""
     }
 }
 
