@@ -37,6 +37,10 @@ final class SessionViewModel: ObservableObject {
 
     var totalWords: Int { words.count }
 
+    /// True when we're on the final round of the current card. Drives UI labels
+    /// that would otherwise lie ("Try Again →" on a round that doesn't loop back).
+    var isFinalRound: Bool { currentRound >= 3 }
+
     // MARK: - Lifecycle
 
     func start(words: [WordQueueItem]) {
@@ -56,8 +60,11 @@ final class SessionViewModel: ObservableObject {
 
     // MARK: - Transitions
 
-    func advanceFromFlash() {
-        guard phase == .flash else { return }
+    /// Advances from flash to writing for the card the caller thinks is current.
+    /// `wordId` guards against stale calls from a cancelled SwiftUI `.task` whose
+    /// resumption would otherwise end the next card's flash phase prematurely.
+    func advanceFromFlash(for wordId: Int) {
+        guard phase == .flash, currentWord?.id == wordId else { return }
         phase = .writing
     }
 
@@ -91,7 +98,12 @@ final class SessionViewModel: ObservableObject {
 
     private func completeCurrentCard(with result: ReviewResult) {
         guard let word = currentWord else { return }
-        pendingReviews.append(PendingReview(wordId: word.id, result: result))
+        pendingReviews.append(PendingReview(
+            wordId: word.id,
+            traditional: word.traditional,
+            pinyin: word.pinyin,
+            result: result
+        ))
 
         cardIndex += 1
         roundResults = []

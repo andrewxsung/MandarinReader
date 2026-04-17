@@ -58,11 +58,17 @@ struct SummaryView: View {
 
     @ViewBuilder
     private func reviewRow(_ review: PendingReview) -> some View {
-        HStack {
+        HStack(spacing: 12) {
             Image(systemName: review.result == .known ? "checkmark.circle.fill" : "circle.dashed")
                 .foregroundStyle(review.result == .known ? .green : .orange)
-            Text("Word #\(review.wordId)")
+            Text(review.traditional)
+                .font(.title2)
                 .foregroundStyle(.primary)
+            if let pinyin = review.pinyin, !pinyin.isEmpty {
+                Text(pinyin)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             Text(review.result.rawValue.capitalized)
                 .font(.caption)

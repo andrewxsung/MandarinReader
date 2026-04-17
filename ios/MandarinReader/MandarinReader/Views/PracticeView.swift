@@ -88,9 +88,13 @@ struct PracticeView: View {
             if session.phase == .flash {
                 flashVisible = true
                 inputFocused = false
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                do {
+                    try await Task.sleep(nanoseconds: 3_000_000_000)
+                } catch {
+                    return  // cancelled (e.g. user skipped) — don't touch VM state
+                }
                 flashVisible = false
-                session.advanceFromFlash()
+                session.advanceFromFlash(for: word.id)
                 inputFocused = true
             }
         }
@@ -152,8 +156,8 @@ struct PracticeView: View {
         switch session.phase {
         case .flash: return "…"
         case .writing: return "Submit"
-        case .feedback(true): return "Next Round →"
-        case .feedback(false): return "Try Again →"
+        case .feedback(true): return session.isFinalRound ? "Next Word →" : "Next Round →"
+        case .feedback(false): return session.isFinalRound ? "Next Word →" : "Try Again →"
         case .summary: return "Done"
         }
     }

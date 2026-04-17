@@ -75,8 +75,10 @@ final class ModelsTests: XCTestCase {
     }
 
     func test_PendingReview_holdsWordIdAndResult() {
-        let review = PendingReview(wordId: 7, result: .known)
+        let review = PendingReview(wordId: 7, traditional: "好", pinyin: "hao3", result: .known)
         XCTAssertEqual(review.wordId, 7)
+        XCTAssertEqual(review.traditional, "好")
+        XCTAssertEqual(review.pinyin, "hao3")
         XCTAssertEqual(review.result, .known)
     }
 }

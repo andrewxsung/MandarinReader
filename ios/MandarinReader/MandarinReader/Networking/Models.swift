@@ -25,8 +25,11 @@ struct ReviewRequest: Codable {
 }
 
 /// A completed card result waiting to be synced at session end.
-/// Kept in memory on `SessionViewModel`.
+/// Kept in memory on `SessionViewModel`. Carries `traditional`/`pinyin` so the
+/// summary screen can show the character instead of just the numeric id.
 struct PendingReview: Equatable {
     let wordId: Int
+    let traditional: String
+    let pinyin: String?
     let result: ReviewResult
 }
