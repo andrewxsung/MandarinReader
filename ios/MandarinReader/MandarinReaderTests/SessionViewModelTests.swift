@@ -12,9 +12,9 @@ final class SessionViewModelTests: XCTestCase {
         )
     }
 
-    private func makeSession(wordCount: Int = 2) -> SessionViewModel {
+    private func makeSession(wordCount: Int = 2, store: PendingReviewStore = InMemoryPendingReviewStore()) -> SessionViewModel {
         let words = (1...wordCount).map { makeWord(id: $0, char: "字\($0)") }
-        let vm = SessionViewModel()
+        let vm = SessionViewModel(store: store)
         vm.start(words: words)
         return vm
     }
@@ -217,5 +217,84 @@ final class SessionViewModelTests: XCTestCase {
         vm.skip()
         XCTAssertTrue(vm.isSessionComplete)
         XCTAssertEqual(vm.phase, .summary)
+    }
+
+    // MARK: - Persistence
+
+    func test_init_loadsPendingReviewsFromStore() {
+        let store = InMemoryPendingReviewStore()
+        store.savedValue = [
+            PendingReview(wordId: 5, traditional: "你", pinyin: "ni3", result: .known)
+        ]
+        let vm = SessionViewModel(store: store)
+        XCTAssertEqual(vm.pendingReviews.count, 1)
+        XCTAssertEqual(vm.pendingReviews[0].traditional, "你")
+    }
+
+    func test_skip_savesPendingReviewsToStore() {
+        let store = InMemoryPendingReviewStore()
+        let vm = makeSession(store: store)
+        vm.skip()
+        XCTAssertEqual(store.savedValue.count, 1)
+        XCTAssertEqual(store.savedValue[0].wordId, 1)
+    }
+
+    func test_cardCompletion_savesPendingReviewsToStore() {
+        let store = InMemoryPendingReviewStore()
+        let vm = makeSession(store: store)
+        vm.advanceFromFlash(for: 1)
+        vm.submit(correct: true); vm.advanceRound()
+        vm.submit(correct: true); vm.advanceRound()
+        vm.submit(correct: true); vm.advanceRound()
+        XCTAssertEqual(store.savedValue.count, 1)
+        XCTAssertEqual(store.savedValue[0].result, .known)
+    }
+
+    func test_clearPersistedReviews_emptiesVMAndStore() {
+        let store = InMemoryPendingReviewStore()
+        let vm = makeSession(store: store)
+        vm.skip()
+        XCTAssertEqual(vm.pendingReviews.count, 1)
+        vm.clearPersistedReviews()
+        XCTAssertEqual(vm.pendingReviews.count, 0)
+        XCTAssertEqual(store.savedValue.count, 0)
+    }
+}
+
+// MARK: - PendingReviewStore tests
+
+final class PendingReviewStoreTests: XCTestCase {
+
+    var defaults: UserDefaults!
+    var store: UserDefaultsPendingReviewStore!
+
+    override func setUp() {
+        super.setUp()
+        defaults = UserDefaults(suiteName: "PendingReviewStoreTests-\(UUID().uuidString)")!
+        store = UserDefaultsPendingReviewStore(defaults: defaults)
+    }
+
+    func test_load_returnsEmptyWhenNothingSaved() {
+        XCTAssertEqual(store.load().count, 0)
+    }
+
+    func test_save_then_load_roundTrips() {
+        let reviews = [
+            PendingReview(wordId: 1, traditional: "你", pinyin: "ni3", result: .known),
+            PendingReview(wordId: 2, traditional: "好", pinyin: nil, result: .learning)
+        ]
+        store.save(reviews)
+        XCTAssertEqual(store.load(), reviews)
+    }
+
+    func test_clear_emptiesStore() {
+        store.save([PendingReview(wordId: 1, traditional: "你", pinyin: nil, result: .known)])
+        store.clear()
+        XCTAssertEqual(store.load().count, 0)
+    }
+
+    func test_load_returnsEmptyOnCorruptData() {
+        defaults.set("not valid json".data(using: .utf8), forKey: "pendingReviews")
+        XCTAssertEqual(store.load().count, 0)
     }
 }

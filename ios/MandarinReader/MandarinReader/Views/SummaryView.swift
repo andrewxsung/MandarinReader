@@ -105,8 +105,15 @@ struct SummaryView: View {
         case .failed(let message):
             VStack(spacing: 12) {
                 Text(message).foregroundStyle(.red).multilineTextAlignment(.center)
-                Button("Retry") { sync() }
-                    .buttonStyle(.borderedProminent)
+                HStack(spacing: 12) {
+                    Button("Discard & Exit") {
+                        session.clearPersistedReviews()
+                        dismiss()
+                    }
+                    .buttonStyle(.bordered)
+                    Button("Retry") { sync() }
+                        .buttonStyle(.borderedProminent)
+                }
             }
         }
     }
@@ -128,7 +135,10 @@ struct SummaryView: View {
                     }
                     try await group.waitForAll()
                 }
-                await MainActor.run { syncState = .succeeded }
+                await MainActor.run {
+                    session.clearPersistedReviews()
+                    syncState = .succeeded
+                }
             } catch {
                 await MainActor.run {
                     syncState = .failed("Sync failed: \(error.localizedDescription)")
