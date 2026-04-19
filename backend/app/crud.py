@@ -106,10 +106,13 @@ async def get_queue(db: AsyncSession, n: int = 20) -> list[tuple[Word, str | Non
     from sqlalchemy import or_
 
     today = date.today()
+    # Include unknown (0) and learning (1). Known (2) is out until they lapse;
+    # ignored (-1) stays out permanently. Priority scoring (priority.py) treats
+    # fam=0 with a 0.5 denominator so brand-new words float to the top.
     result = await db.execute(
         select(Word)
         .where(
-            Word.familiarity_score == 1,
+            Word.familiarity_score.in_([0, 1]),
             or_(
                 Word.next_review_date == None,
                 Word.next_review_date <= today,
