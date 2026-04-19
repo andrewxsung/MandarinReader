@@ -86,11 +86,12 @@ MandarinReader/
 │   │   └── index.html           # Frontend dashboard (served at /)
 │   ├── Dockerfile
 │   └── requirements.txt
-└── extension/
-    ├── manifest.json            # MV3 manifest
-    ├── background.js            # Service worker: Claude API + backend POST
-    ├── popup.html / popup.js    # Extension popup UI
-    └── options.html / options.js  # Settings: Claude key, backend URL, API key
+├── extension/
+│   ├── manifest.json            # MV3 manifest
+│   ├── background.js            # Service worker: Claude API + backend POST
+│   ├── popup.html / popup.js    # Extension popup UI
+│   └── options.html / options.js  # Settings: Claude key, backend URL, API key
+└── ios/MandarinReader/          # iPadOS handwriting practice app (see iPadOS App section)
 ```
 
 ---
@@ -206,20 +207,89 @@ Frontend dashboard (`/static/index.html`): vocabulary list with filter/sort, inl
 ### 2026-03-12 — Stroke-Order Animations
 Replaced freehand canvas drawing with animated stroke-order playback using `hanzi-writer` CDN library (v3.5). Flow: character strokes animate → user replays → clicks "I wrote it" → character blurs for recall → "Done Practicing" advances. Multi-character words split into individual CJK characters, each animated sequentially. Unsupported characters show graceful fallback. Phase model simplified from `trace|recall` to `watch|recall`. Only `backend/static/index.html` changed.
 
+---
+
+## iPadOS App
+
+Native SwiftUI app for iPad (iPadOS 16.6+) that pulls from the priority queue and runs flash-then-recall handwriting practice sessions.
+
+### Flow
+1. **Start Session** — select word count (5–50), fetches from `GET /api/queue?n=N`
+2. **Flash phase** — character shown for 3 seconds, then hidden
+3. **Writing phase** — user writes the character using the iOS Chinese handwriting keyboard (Traditional), typed text compared against target
+4. **3 rounds per card** — 2+ correct = known, else learning; skip = known
+5. **Summary** — shows results, syncs to backend via parallel `POST /api/review/{word_id}` calls
+6. **Settings** — backend URL + API key stored in UserDefaults
+
+### File Structure
+```
+ios/MandarinReader/MandarinReader/
+├── MandarinReaderApp.swift           # Entry point, injects AppSettings
+├── App/
+│   ├── AppSettings.swift             # UserDefaults-backed backend config
+│   └── SettingsView.swift            # Backend URL + API key form
+├── Networking/
+│   ├── APIClient.swift               # fetchQueue + submitReview (URLSession)
+│   └── Models.swift                  # WordQueueItem, PendingReview, ReviewResult
+├── Session/
+│   └── SessionViewModel.swift        # State machine: flash → writing → feedback → summary
+└── Views/
+    ├── StartSessionView.swift        # Word count picker + Start button
+    ├── PracticeView.swift            # Flash + TextField input + feedback loop
+    ├── FeedbackOverlay.swift         # Correct/incorrect overlay badge
+    └── SummaryView.swift             # Results + parallel sync
+```
+
+### Running on Device
+1. Open `ios/MandarinReader/MandarinReader.xcodeproj` in Xcode
+2. Signing & Capabilities → select your team, set a unique bundle ID
+3. Enable Developer Mode on the iPad: Settings → Privacy & Security → Developer Mode (reboots device)
+4. Select your iPad as destination → ⌘R
+5. On iPad: Settings → General → VPN & Device Management → trust your developer profile
+6. In the app: Settings → enter the Railway backend URL (or LAN IP for local dev) and the `MANDARINREADER_API_KEY`
+
+---
+
+## Development Log
+
+### 2026-04-19 — Bug Squash + First Device Run
+
+Ran the app on a physical iPad end-to-end for the first time. Fixed a batch of correctness bugs surfaced by code review and the first live test.
+
+**iPad app fixes:**
+- **Flash race:** `PracticeView.task` was swallowing `CancellationError` via `try?`, so a skipped card's cancelled task would resume and advance the *next* card's flash phase prematurely. Now guards `advanceFromFlash(for:)` with the word id the task was started for.
+- **Summary labels:** `PendingReview` now carries `traditional`/`pinyin` so the summary list and recovery banner render the actual character instead of `Word #id`.
+- **Round-3 button text:** `"Try Again →"` showed on the final round where no retry is possible. Added `isFinalRound` derived state to label the button `"Next Word →"` on round 3.
+- **Unsynced review persistence:** Reviews are now saved to `UserDefaults` via a `PendingReviewStore` protocol (swappable for tests). On app launch, if unsynced reviews are detected, `StartSessionView` shows a recovery banner with Sync/Discard actions. `SummaryView.failed` gains a "Discard & Exit" button so a permanently-failing sync can't trap the user.
+- **Xcode 26 deinit crash (expanded):** The `nonisolated deinit { }` workaround isn't limited to classes declared `@MainActor` — any plain `final class` stored as a property of a `@MainActor` owner goes through the same broken back-deploy shim under `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` and crashes libmalloc. Applied to `UserDefaultsPendingReviewStore` and `InMemoryPendingReviewStore`.
+
+**Backend fix:**
+- **Queue excluded new words.** `get_queue` in `crud.py` filtered on `familiarity_score == 1`, so newly ingested words (fam=0) never appeared for review even though the priority scoring in `priority.py` was specifically designed to float them to the top. Changed to `familiarity_score.in_([0, 1])`.
+
+**Status:** App runs on iPad Pro 12.9" (5th gen). Queue fetch → flash → handwriting → review → sync path confirmed working against the Railway backend.
+
+### 2026-04-13 — iPadOS Handwriting Practice App
+
+Built native SwiftUI iPad app on the `feat/ipad-app` branch (14 commits).
+
+**Architecture:** `StartSessionView` → `PracticeView` → `SummaryView` flow. `SessionViewModel` manages the state machine (flash → writing → feedback, 3 rounds per card). `APIClient` handles network calls with `URLSession`. `AppSettings` persists backend config via `@Published` properties backed by `UserDefaults`.
+
+**Key decisions:**
+- Started with PencilKit canvas + Vision framework `VNRecognizeTextRequest` for on-device handwriting recognition. Vision was unreliable for isolated handwritten glyphs — replaced with iOS system Chinese handwriting keyboard input and exact string comparison. Simpler and more accurate.
+- `withThrowingTaskGroup` for parallel review sync — all review results POST concurrently.
+- Xcode 26 gotcha: `@MainActor final class` with deployment target < iOS 18 crashes in `swift_task_deinitOnExecutorMainActorBackDeploy` — requires explicit `nonisolated deinit { }` on every such class. (Updated 2026-04-19: applies to plain `final class` stored on MainActor owners too.)
+
 ### 2026-04-12 — Cloud Deployment + API Key Auth
-- Added `backend/app/auth.py` — `verify_auth` FastAPI dependency checking `X-API-Key` header against `MANDARINREADER_API_KEY` env var. Auth skipped when env var is unset (local dev). Return type is `str` identity, designed for easy swap to JWT later.
-- Applied auth to all `/api/*` routers via router-level `dependencies=[Depends(verify_auth)]`. `/health` remains public.
-- CORS origins now configurable via `CORS_ORIGINS` env var (comma-separated, defaults to `*`).
-- `database.py` auto-normalizes Railway's `postgresql://` format to `postgresql+asyncpg://`.
-- Added `backend/Dockerfile` (`python:3.12-slim`, uvicorn on `0.0.0.0:8000`) and `.dockerignore`.
-- Chrome extension updated: new "MandarinReader API Key" field in Options, `X-API-Key` header sent on all backend requests.
-- Deployed to Railway: Postgres 16 with persistent volume, 114,943 CEDICT rows loaded. Backend live at `https://mandarinreader-production.up.railway.app`.
+- Added `X-API-Key` auth on all `/api/*` routes (skipped when env var unset for local dev).
+- CORS origins configurable via `CORS_ORIGINS` env var.
+- Added `backend/Dockerfile`, deployed to Railway with Postgres 16.
+- Chrome extension updated with API key field in Options.
 
 ---
 
 ## Planned / Next Up
 
-- **iPadOS companion app** — SwiftUI app for flashcard review and writing practice with Apple Pencil (PencilKit). Connects to the Railway backend. Vision framework OCR for character recognition is stretch goal.
+- **Remaining iPad P1s** — retry double-submit guard on sync, URL trimming in Settings, HTTPS enforcement, mid-session exit handling, force-unwrap audit
 - **Camera input** — OCR photos via Apple Vision (iOS) to pipe into corpus
 - **Share sheet** — Accept text/images from any iOS app
 - **Known-word bootstrapping** — Import HSK lists or placement test to seed familiarity scores
