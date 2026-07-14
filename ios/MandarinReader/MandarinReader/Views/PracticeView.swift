@@ -11,6 +11,15 @@ struct PracticeView: View {
     @State private var showSummary = false
     @FocusState private var inputFocused: Bool
 
+    // Handwriting quiz state. `handwritingAvailable` decides the input mode
+    // per card: stroke canvas when the dataset covers every character of the
+    // word, keyboard TextField fallback otherwise.
+    @State private var strokeStore = BundleStrokeDataStore()
+    @State private var handwritingAvailable = true
+    @State private var quiz: HandwritingQuiz?
+    @State private var hintTrigger = 0
+    @State private var rejectTrigger = 0
+
     var body: some View {
         Group {
             if let word = session.currentWord {
@@ -40,6 +49,7 @@ struct PracticeView: View {
                 Spacer()
                 Button("Skip →") {
                     resetInput()
+                    quiz = nil
                     session.skip()
                     if session.isSessionComplete { showSummary = true }
                 }
@@ -57,21 +67,11 @@ struct PracticeView: View {
                             .stroke(inputBorderColor, lineWidth: 3)
                     )
 
-                VStack(spacing: 12) {
-                    TextField("", text: $input)
-                        .font(.system(size: 120, weight: .regular))
-                        .multilineTextAlignment(.center)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .focused($inputFocused)
-                        .disabled(session.phase != .writing)
-                        .onSubmit { if session.phase == .writing { submit() } }
-
-                    Text("Use the Chinese handwriting keyboard")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                if handwritingAvailable {
+                    handwritingPanel(for: word)
+                } else {
+                    keyboardPanel
                 }
-                .padding()
 
                 if case .feedback(let correct) = session.phase {
                     FeedbackOverlay(character: word.traditional, correct: correct)
@@ -85,6 +85,8 @@ struct PracticeView: View {
                 .padding(.bottom)
         }
         .task(id: word.id) {
+            quiz = nil
+            handwritingAvailable = strokeStore.hasData(forWord: word.traditional)
             if session.phase == .flash {
                 flashVisible = true
                 inputFocused = false
@@ -95,10 +97,134 @@ struct PracticeView: View {
                 }
                 flashVisible = false
                 session.advanceFromFlash(for: word.id)
+            }
+        }
+        .onChange(of: session.phase) { newPhase in
+            guard newPhase == .writing else { return }
+            if handwritingAvailable {
+                prepareQuiz(for: word)
+            } else {
                 inputFocused = true
             }
         }
     }
+
+    // MARK: - Input panels
+
+    @ViewBuilder
+    private var keyboardPanel: some View {
+        VStack(spacing: 12) {
+            TextField("", text: $input)
+                .font(.system(size: 120, weight: .regular))
+                .multilineTextAlignment(.center)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .focused($inputFocused)
+                .disabled(session.phase != .writing)
+                .onSubmit { if session.phase == .writing { submit() } }
+
+            Text("Use the Chinese handwriting keyboard")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+    }
+
+    @ViewBuilder
+    private func handwritingPanel(for word: WordQueueItem) -> some View {
+        VStack(spacing: 12) {
+            characterProgressRow(for: word)
+
+            if let quiz, let character = quiz.currentCharacter {
+                HandwritingCanvasView(
+                    character: character,
+                    acceptedStrokeCount: quiz.acceptedStrokeCount,
+                    hintTrigger: hintTrigger,
+                    rejectTrigger: rejectTrigger,
+                    onStrokeEnded: { handleStroke($0, for: word) }
+                )
+            } else if let quiz, quiz.isComplete, let last = quiz.characters.last {
+                // Word finished: keep the last character on display under the
+                // feedback overlay.
+                HandwritingCanvasView(
+                    character: last,
+                    acceptedStrokeCount: last.strokes.count,
+                    hintTrigger: 0,
+                    rejectTrigger: 0,
+                    onStrokeEnded: { _ in }
+                )
+            } else {
+                // Flash phase: empty writing surface.
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(.separator), style: StrokeStyle(lineWidth: 1, dash: [4, 6]))
+                    .aspectRatio(1, contentMode: .fit)
+            }
+
+            Text("Write each character stroke by stroke")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+    }
+
+    @ViewBuilder
+    private func characterProgressRow(for word: WordQueueItem) -> some View {
+        let completedCount = quiz?.characterIndex ?? 0
+        HStack(spacing: 12) {
+            ForEach(Array(word.traditional.enumerated()), id: \.offset) { index, char in
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(index == completedCount && session.phase == .writing
+                                ? Color.accentColor : Color(.separator),
+                                lineWidth: index == completedCount && session.phase == .writing ? 2 : 1)
+                    if index < completedCount || quiz?.isComplete == true {
+                        Text(String(char))
+                            .font(.system(size: 36))
+                    } else {
+                        Circle()
+                            .fill(Color(.tertiarySystemFill))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                .frame(width: 52, height: 52)
+            }
+        }
+    }
+
+    // MARK: - Stroke handling
+
+    private func handleStroke(_ points: [CGPoint], for word: WordQueueItem) {
+        guard session.phase == .writing, quiz != nil else { return }
+        guard let outcome = quiz?.submitStroke(points) else { return }
+
+        switch outcome {
+        case .accepted, .acceptedForced, .characterComplete:
+            break
+        case .rejected(let showHint, _):
+            rejectTrigger += 1
+            if showHint { hintTrigger += 1 }
+        case .wordComplete:
+            let correct = quiz?.isCorrect ?? false
+            // Let the final stroke visibly snap into place before feedback.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard session.currentWord?.id == word.id else { return }
+                session.submit(correct: correct)
+            }
+        }
+    }
+
+    private func prepareQuiz(for word: WordQueueItem) {
+        let characters = word.traditional.compactMap { strokeStore.data(for: $0) }
+        guard characters.count == word.traditional.count, !characters.isEmpty else {
+            handwritingAvailable = false
+            inputFocused = true
+            return
+        }
+        quiz = HandwritingQuiz(characters: characters)
+    }
+
+    // MARK: - Info bar
 
     @ViewBuilder
     private func infoBar(for word: WordQueueItem) -> some View {
@@ -127,18 +253,22 @@ struct PracticeView: View {
         .padding(.horizontal)
     }
 
+    // MARK: - Controls
+
     @ViewBuilder
     private func controls() -> some View {
         HStack(spacing: 12) {
-            Button("Clear") {
-                resetInput()
-                inputFocused = true
+            if !handwritingAvailable {
+                Button("Clear") {
+                    resetInput()
+                    inputFocused = true
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color(.tertiarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .disabled(session.phase != .writing)
             }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color(.tertiarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .disabled(session.phase != .writing)
 
             Button(primaryButtonTitle) {
                 primaryAction()
@@ -155,7 +285,7 @@ struct PracticeView: View {
     private var primaryButtonTitle: String {
         switch session.phase {
         case .flash: return "…"
-        case .writing: return "Submit"
+        case .writing: return handwritingAvailable ? "Write the word above" : "Submit"
         case .feedback(true): return session.isFinalRound ? "Next Word →" : "Next Round →"
         case .feedback(false): return session.isFinalRound ? "Next Word →" : "Try Again →"
         case .summary: return "Done"
@@ -172,9 +302,13 @@ struct PracticeView: View {
 
     private var primaryDisabled: Bool {
         switch session.phase {
-        case .writing: return input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .flash: return true
-        default: return false
+        case .writing:
+            return handwritingAvailable
+                || input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .flash:
+            return true
+        default:
+            return false
         }
     }
 
@@ -203,13 +337,13 @@ struct PracticeView: View {
     private func primaryAction() {
         switch session.phase {
         case .writing:
-            submit()
+            if !handwritingAvailable { submit() }
         case .feedback:
             session.advanceRound()
             resetInput()
             if session.isSessionComplete {
                 showSummary = true
-            } else {
+            } else if !handwritingAvailable {
                 inputFocused = true
             }
         default:

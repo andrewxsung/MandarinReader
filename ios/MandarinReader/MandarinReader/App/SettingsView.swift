@@ -29,6 +29,12 @@ struct SettingsView: View {
                             .foregroundStyle(.orange)
                     }
                 }
+
+                Section("About") {
+                    Text("Stroke order data from Hanzi Writer / Make Me a Hanzi, derived from Arphic Technology fonts under the Arphic Public License (ARPHICPL.TXT is included in the app bundle).")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
             .navigationTitle("Settings")
             .toolbar {

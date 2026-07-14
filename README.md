@@ -216,7 +216,7 @@ Native SwiftUI app for iPad (iPadOS 16.6+) that pulls from the priority queue an
 ### Flow
 1. **Start Session** — select word count (5–50), fetches from `GET /api/queue?n=N`
 2. **Flash phase** — character shown for 3 seconds, then hidden
-3. **Writing phase** — user writes the character using the iOS Chinese handwriting keyboard (Traditional), typed text compared against target
+3. **Writing phase** — user free-writes each character stroke-by-stroke on a 米字格 canvas (finger or Apple Pencil). Each stroke is validated against Hanzi Writer stroke data; accepted strokes snap to typeset stroke shapes, rejected strokes flash red, and a hint pulses in after 3 misses on the same stroke (force-accepted after 6 so a round can't stall). Round is correct iff total misses < 20% of the word's stroke count. Words with a character missing from the dataset fall back to the iOS Chinese handwriting keyboard + exact match.
 4. **3 rounds per card** — 2+ correct = known, else learning; skip = known
 5. **Summary** — shows results, syncs to backend via parallel `POST /api/review/{word_id}` calls
 6. **Settings** — backend URL + API key stored in UserDefaults
@@ -228,6 +228,13 @@ ios/MandarinReader/MandarinReader/
 ├── App/
 │   ├── AppSettings.swift             # UserDefaults-backed backend config
 │   └── SettingsView.swift            # Backend URL + API key form
+├── HanziWriterData.bundle/           # 9,574 per-character stroke JSONs (Arphic license)
+├── Handwriting/
+│   ├── SVGPathParser.swift           # Absolute M/L/Q/C/Z SVG path → CGPath
+│   ├── StrokeData.swift              # Models + BundleStrokeDataStore (y-flip at load)
+│   ├── HanziGeometry.swift           # Fréchet distance, resample, normalize (geometry.ts port)
+│   ├── StrokeMatcher.swift           # Stroke acceptance checks (strokeMatches.ts port)
+│   └── HandwritingQuiz.swift         # Per-word quiz state machine + grading
 ├── Networking/
 │   ├── APIClient.swift               # fetchQueue + submitReview (URLSession)
 │   └── Models.swift                  # WordQueueItem, PendingReview, ReviewResult
@@ -235,7 +242,8 @@ ios/MandarinReader/MandarinReader/
 │   └── SessionViewModel.swift        # State machine: flash → writing → feedback → summary
 └── Views/
     ├── StartSessionView.swift        # Word count picker + Start button
-    ├── PracticeView.swift            # Flash + TextField input + feedback loop
+    ├── HandwritingCanvasView.swift   # 米字格 canvas: ink, typeset fills, hints
+    ├── PracticeView.swift            # Flash + stroke canvas (or keyboard fallback) + feedback loop
     ├── FeedbackOverlay.swift         # Correct/incorrect overlay badge
     └── SummaryView.swift             # Results + parallel sync
 ```
@@ -251,6 +259,18 @@ ios/MandarinReader/MandarinReader/
 ---
 
 ## Development Log
+
+### 2026-07-02 — Laoshi-Style On-Screen Stroke Matching
+
+Replaced keyboard input with free-writing on a canvas, Laoshi/Skritter style. The key insight vs. the failed April PencilKit + Vision attempt: no recognition needed at all — during review the app already knows the expected character, so each drawn stroke is matched against that character's known stroke medians.
+
+- **Data:** vendored `hanzi-writer-data` (Make Me a Hanzi) — 9,574 per-character JSONs (~46 MB) with SVG stroke outlines + median polylines, covering Traditional. Bundled as `HanziWriterData.bundle`, a folder named `*.bundle` so Xcode 16 synchronized groups copy it as a single wrapper resource (no pbxproj surgery, no 9.5k flattened resources). Arphic Public License text ships in the bundle; attribution in Settings.
+- **Matching:** native Swift port of Hanzi Writer's `strokeMatches.ts` + `geometry.ts` (avg-distance gate with halved threshold for later strokes, start/end distance, direction cosine similarity, normalized-curve Fréchet shape fit over ±π/16 rotations, length ratio, backwards-stroke detection, later-stroke leniency tightening). Coordinates pre-flipped into top-left 1024-space at load (`y' = 900 − y`) so matcher, views, and touch input share one system.
+- **Quiz:** `HandwritingQuiz` plain struct (deliberately not an ObservableObject — sidesteps both Xcode 26 MainActor gotchas). Hint after 3 misses on a stroke, force-accept after 6, round correct iff misses < 20% of stroke count. One character at a time with a progress row for multi-char words.
+- **Fallback:** words with any character missing from the dataset keep the old TextField + Chinese handwriting keyboard path, per card.
+- Built TDD throughout: 51 new unit tests (parser, store, geometry, matcher, quiz, coordinate conversion), 97/97 suite green. Coordinate-conversion round-trip test guards the classic "everything matches / nothing matches" scaling footgun.
+
+**Status:** simulator-verified (build, tests, app boot with bundle). Pending on-device QA with Apple Pencil: stroke feel, hint timing, multi-char flow, fallback card, skip mid-writing.
 
 ### 2026-04-19 — Bug Squash + First Device Run
 
