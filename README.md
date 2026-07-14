@@ -86,11 +86,12 @@ MandarinReader/
 │   │   └── index.html           # Frontend dashboard (served at /)
 │   ├── Dockerfile
 │   └── requirements.txt
-└── extension/
-    ├── manifest.json            # MV3 manifest
-    ├── background.js            # Service worker: Claude API + backend POST
-    ├── popup.html / popup.js    # Extension popup UI
-    └── options.html / options.js  # Settings: Claude key, backend URL, API key
+├── extension/
+│   ├── manifest.json            # MV3 manifest
+│   ├── background.js            # Service worker: Claude API + backend POST
+│   ├── popup.html / popup.js    # Extension popup UI
+│   └── options.html / options.js  # Settings: Claude key, backend URL, API key
+└── ios/MandarinReader/          # iPadOS handwriting practice app (see iPadOS App section)
 ```
 
 ---
@@ -206,20 +207,109 @@ Frontend dashboard (`/static/index.html`): vocabulary list with filter/sort, inl
 ### 2026-03-12 — Stroke-Order Animations
 Replaced freehand canvas drawing with animated stroke-order playback using `hanzi-writer` CDN library (v3.5). Flow: character strokes animate → user replays → clicks "I wrote it" → character blurs for recall → "Done Practicing" advances. Multi-character words split into individual CJK characters, each animated sequentially. Unsupported characters show graceful fallback. Phase model simplified from `trace|recall` to `watch|recall`. Only `backend/static/index.html` changed.
 
+---
+
+## iPadOS App
+
+Native SwiftUI app for iPad (iPadOS 16.6+) that pulls from the priority queue and runs flash-then-recall handwriting practice sessions.
+
+### Flow
+1. **Start Session** — select word count (5–50), fetches from `GET /api/queue?n=N`
+2. **Flash phase** — character shown for 3 seconds, then hidden
+3. **Writing phase** — user free-writes each character stroke-by-stroke on a 米字格 canvas (finger or Apple Pencil). Each stroke is validated against Hanzi Writer stroke data; accepted strokes snap to typeset stroke shapes, rejected strokes flash red, and a hint pulses in after 3 misses on the same stroke (force-accepted after 6 so a round can't stall). Round is correct iff total misses < 20% of the word's stroke count. Words with a character missing from the dataset fall back to the iOS Chinese handwriting keyboard + exact match.
+4. **3 rounds per card** — 2+ correct = known, else learning; skip = known
+5. **Summary** — shows results, syncs to backend via parallel `POST /api/review/{word_id}` calls
+6. **Settings** — backend URL + API key stored in UserDefaults
+
+### File Structure
+```
+ios/MandarinReader/MandarinReader/
+├── MandarinReaderApp.swift           # Entry point, injects AppSettings
+├── App/
+│   ├── AppSettings.swift             # UserDefaults-backed backend config
+│   └── SettingsView.swift            # Backend URL + API key form
+├── HanziWriterData.bundle/           # 9,574 per-character stroke JSONs (Arphic license)
+├── Handwriting/
+│   ├── SVGPathParser.swift           # Absolute M/L/Q/C/Z SVG path → CGPath
+│   ├── StrokeData.swift              # Models + BundleStrokeDataStore (y-flip at load)
+│   ├── HanziGeometry.swift           # Fréchet distance, resample, normalize (geometry.ts port)
+│   ├── StrokeMatcher.swift           # Stroke acceptance checks (strokeMatches.ts port)
+│   └── HandwritingQuiz.swift         # Per-word quiz state machine + grading
+├── Networking/
+│   ├── APIClient.swift               # fetchQueue + submitReview (URLSession)
+│   └── Models.swift                  # WordQueueItem, PendingReview, ReviewResult
+├── Session/
+│   └── SessionViewModel.swift        # State machine: flash → writing → feedback → summary
+└── Views/
+    ├── StartSessionView.swift        # Word count picker + Start button
+    ├── HandwritingCanvasView.swift   # 米字格 canvas: ink, typeset fills, hints
+    ├── PracticeView.swift            # Flash + stroke canvas (or keyboard fallback) + feedback loop
+    ├── FeedbackOverlay.swift         # Correct/incorrect overlay badge
+    └── SummaryView.swift             # Results + parallel sync
+```
+
+### Running on Device
+1. Open `ios/MandarinReader/MandarinReader.xcodeproj` in Xcode
+2. Signing & Capabilities → select your team, set a unique bundle ID
+3. Enable Developer Mode on the iPad: Settings → Privacy & Security → Developer Mode (reboots device)
+4. Select your iPad as destination → ⌘R
+5. On iPad: Settings → General → VPN & Device Management → trust your developer profile
+6. In the app: Settings → enter the Railway backend URL (or LAN IP for local dev) and the `MANDARINREADER_API_KEY`
+
+---
+
+## Development Log
+
+### 2026-07-02 — Laoshi-Style On-Screen Stroke Matching
+
+Replaced keyboard input with free-writing on a canvas, Laoshi/Skritter style. The key insight vs. the failed April PencilKit + Vision attempt: no recognition needed at all — during review the app already knows the expected character, so each drawn stroke is matched against that character's known stroke medians.
+
+- **Data:** vendored `hanzi-writer-data` (Make Me a Hanzi) — 9,574 per-character JSONs (~46 MB) with SVG stroke outlines + median polylines, covering Traditional. Bundled as `HanziWriterData.bundle`, a folder named `*.bundle` so Xcode 16 synchronized groups copy it as a single wrapper resource (no pbxproj surgery, no 9.5k flattened resources). Arphic Public License text ships in the bundle; attribution in Settings.
+- **Matching:** native Swift port of Hanzi Writer's `strokeMatches.ts` + `geometry.ts` (avg-distance gate with halved threshold for later strokes, start/end distance, direction cosine similarity, normalized-curve Fréchet shape fit over ±π/16 rotations, length ratio, backwards-stroke detection, later-stroke leniency tightening). Coordinates pre-flipped into top-left 1024-space at load (`y' = 900 − y`) so matcher, views, and touch input share one system.
+- **Quiz:** `HandwritingQuiz` plain struct (deliberately not an ObservableObject — sidesteps both Xcode 26 MainActor gotchas). Hint after 3 misses on a stroke, force-accept after 6, round correct iff misses < 20% of stroke count. One character at a time with a progress row for multi-char words.
+- **Fallback:** words with any character missing from the dataset keep the old TextField + Chinese handwriting keyboard path, per card.
+- Built TDD throughout: 51 new unit tests (parser, store, geometry, matcher, quiz, coordinate conversion), 97/97 suite green. Coordinate-conversion round-trip test guards the classic "everything matches / nothing matches" scaling footgun.
+
+**Status:** simulator-verified (build, tests, app boot with bundle). Pending on-device QA with Apple Pencil: stroke feel, hint timing, multi-char flow, fallback card, skip mid-writing.
+
+### 2026-04-19 — Bug Squash + First Device Run
+
+Ran the app on a physical iPad end-to-end for the first time. Fixed a batch of correctness bugs surfaced by code review and the first live test.
+
+**iPad app fixes:**
+- **Flash race:** `PracticeView.task` was swallowing `CancellationError` via `try?`, so a skipped card's cancelled task would resume and advance the *next* card's flash phase prematurely. Now guards `advanceFromFlash(for:)` with the word id the task was started for.
+- **Summary labels:** `PendingReview` now carries `traditional`/`pinyin` so the summary list and recovery banner render the actual character instead of `Word #id`.
+- **Round-3 button text:** `"Try Again →"` showed on the final round where no retry is possible. Added `isFinalRound` derived state to label the button `"Next Word →"` on round 3.
+- **Unsynced review persistence:** Reviews are now saved to `UserDefaults` via a `PendingReviewStore` protocol (swappable for tests). On app launch, if unsynced reviews are detected, `StartSessionView` shows a recovery banner with Sync/Discard actions. `SummaryView.failed` gains a "Discard & Exit" button so a permanently-failing sync can't trap the user.
+- **Xcode 26 deinit crash (expanded):** The `nonisolated deinit { }` workaround isn't limited to classes declared `@MainActor` — any plain `final class` stored as a property of a `@MainActor` owner goes through the same broken back-deploy shim under `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` and crashes libmalloc. Applied to `UserDefaultsPendingReviewStore` and `InMemoryPendingReviewStore`.
+
+**Backend fix:**
+- **Queue excluded new words.** `get_queue` in `crud.py` filtered on `familiarity_score == 1`, so newly ingested words (fam=0) never appeared for review even though the priority scoring in `priority.py` was specifically designed to float them to the top. Changed to `familiarity_score.in_([0, 1])`.
+
+**Status:** App runs on iPad Pro 12.9" (5th gen). Queue fetch → flash → handwriting → review → sync path confirmed working against the Railway backend.
+
+### 2026-04-13 — iPadOS Handwriting Practice App
+
+Built native SwiftUI iPad app on the `feat/ipad-app` branch (14 commits).
+
+**Architecture:** `StartSessionView` → `PracticeView` → `SummaryView` flow. `SessionViewModel` manages the state machine (flash → writing → feedback, 3 rounds per card). `APIClient` handles network calls with `URLSession`. `AppSettings` persists backend config via `@Published` properties backed by `UserDefaults`.
+
+**Key decisions:**
+- Started with PencilKit canvas + Vision framework `VNRecognizeTextRequest` for on-device handwriting recognition. Vision was unreliable for isolated handwritten glyphs — replaced with iOS system Chinese handwriting keyboard input and exact string comparison. Simpler and more accurate.
+- `withThrowingTaskGroup` for parallel review sync — all review results POST concurrently.
+- Xcode 26 gotcha: `@MainActor final class` with deployment target < iOS 18 crashes in `swift_task_deinitOnExecutorMainActorBackDeploy` — requires explicit `nonisolated deinit { }` on every such class. (Updated 2026-04-19: applies to plain `final class` stored on MainActor owners too.)
+
 ### 2026-04-12 — Cloud Deployment + API Key Auth
-- Added `backend/app/auth.py` — `verify_auth` FastAPI dependency checking `X-API-Key` header against `MANDARINREADER_API_KEY` env var. Auth skipped when env var is unset (local dev). Return type is `str` identity, designed for easy swap to JWT later.
-- Applied auth to all `/api/*` routers via router-level `dependencies=[Depends(verify_auth)]`. `/health` remains public.
-- CORS origins now configurable via `CORS_ORIGINS` env var (comma-separated, defaults to `*`).
-- `database.py` auto-normalizes Railway's `postgresql://` format to `postgresql+asyncpg://`.
-- Added `backend/Dockerfile` (`python:3.12-slim`, uvicorn on `0.0.0.0:8000`) and `.dockerignore`.
-- Chrome extension updated: new "MandarinReader API Key" field in Options, `X-API-Key` header sent on all backend requests.
-- Deployed to Railway: Postgres 16 with persistent volume, 114,943 CEDICT rows loaded. Backend live at `https://mandarinreader-production.up.railway.app`.
+- Added `X-API-Key` auth on all `/api/*` routes (skipped when env var unset for local dev).
+- CORS origins configurable via `CORS_ORIGINS` env var.
+- Added `backend/Dockerfile`, deployed to Railway with Postgres 16.
+- Chrome extension updated with API key field in Options.
 
 ---
 
 ## Planned / Next Up
 
-- **iPadOS companion app** — SwiftUI app for flashcard review and writing practice with Apple Pencil (PencilKit). Connects to the Railway backend. Vision framework OCR for character recognition is stretch goal.
+- **Remaining iPad P1s** — retry double-submit guard on sync, URL trimming in Settings, HTTPS enforcement, mid-session exit handling, force-unwrap audit
 - **Camera input** — OCR photos via Apple Vision (iOS) to pipe into corpus
 - **Share sheet** — Accept text/images from any iOS app
 - **Known-word bootstrapping** — Import HSK lists or placement test to seed familiarity scores
