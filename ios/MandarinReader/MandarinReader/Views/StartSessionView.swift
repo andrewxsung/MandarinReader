@@ -19,7 +19,7 @@ struct StartSessionView: View {
                 Spacer()
 
                 Text("MandarinReader")
-                    .font(.system(size: 48, weight: .bold))
+                    .font(.system(size: 36, weight: .bold))
                 Text("Handwriting Practice")
                     .font(.title2)
                     .foregroundStyle(.secondary)
@@ -34,7 +34,7 @@ struct StartSessionView: View {
                             Text("Words this session: **\(wordCount)**")
                                 .font(.title3)
                         }
-                        .padding(.horizontal, 64)
+                        .padding(.horizontal, 24)
 
                         Button(action: startSession) {
                             HStack {
