@@ -219,6 +219,66 @@ final class SessionViewModelTests: XCTestCase {
         XCTAssertEqual(vm.phase, .summary)
     }
 
+    // MARK: - session lifecycle (drives root navigation)
+
+    func test_start_marksSessionActive() {
+        let vm = makeSession()
+        XCTAssertTrue(vm.isActive)
+    }
+
+    func test_start_withEmptyWordsDoesNotActivateSession() {
+        // An empty queue shows an error on the start screen rather than
+        // navigating into a session with nothing to practice.
+        let vm = SessionViewModel()
+        vm.start(words: [])
+        XCTAssertFalse(vm.isActive)
+    }
+
+    func test_endSession_deactivatesSession() {
+        // "New Session" on the summary screen has to unwind the whole
+        // navigation stack, which StartSessionView drives off isActive.
+        let vm = makeSession(wordCount: 1)
+        vm.skip()
+        XCTAssertTrue(vm.isSessionComplete)
+        vm.endSession()
+        XCTAssertFalse(vm.isActive)
+    }
+
+    func test_endSession_clearsCompletedSessionState() {
+        // Nothing may be left behind that would make PracticeView re-present
+        // the summary while it is briefly on screen during the pop.
+        let vm = makeSession(wordCount: 1)
+        vm.skip()
+        vm.endSession()
+        XCTAssertFalse(vm.isSessionComplete)
+        XCTAssertNil(vm.currentWord)
+        XCTAssertEqual(vm.totalWords, 0)
+    }
+
+    func test_endSession_preservesUnsyncedReviews() {
+        // Discard & Exit clears reviews explicitly; ending the session on its
+        // own must not silently drop reviews that never reached the backend.
+        let store = InMemoryPendingReviewStore()
+        let vm = makeSession(wordCount: 1, store: store)
+        vm.skip()
+        vm.endSession()
+        XCTAssertEqual(vm.pendingReviews.count, 1)
+        XCTAssertEqual(store.savedValue.count, 1)
+    }
+
+    func test_startAfterEndSession_beginsFreshSession() {
+        let vm = makeSession(wordCount: 1)
+        vm.skip()
+        vm.endSession()
+        vm.start(words: [makeWord(id: 9, char: "新")])
+
+        XCTAssertTrue(vm.isActive)
+        XCTAssertEqual(vm.currentWord?.id, 9)
+        XCTAssertEqual(vm.currentRound, 1)
+        XCTAssertEqual(vm.phase, .flash)
+        XCTAssertFalse(vm.isSessionComplete)
+    }
+
     // MARK: - Persistence
 
     func test_init_loadsPendingReviewsFromStore() {

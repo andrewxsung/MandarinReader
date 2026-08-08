@@ -8,7 +8,6 @@ struct StartSessionView: View {
     @State private var wordCount: Int = 20
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
-    @State private var showPractice: Bool = false
     @State private var showSettings: Bool = false
     @State private var isRecovering: Bool = false
     @State private var recoveryMessage: String?
@@ -78,10 +77,20 @@ struct StartSessionView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
-            .navigationDestination(isPresented: $showPractice) {
+            .navigationDestination(isPresented: practiceIsPresented) {
                 PracticeView(session: session)
             }
         }
+    }
+
+    /// Navigation into the session is driven by the ViewModel rather than local
+    /// state so SummaryView, two levels down, can unwind the entire stack by
+    /// ending the session.
+    private var practiceIsPresented: Binding<Bool> {
+        Binding(
+            get: { session.isActive },
+            set: { if !$0 { session.endSession() } }
+        )
     }
 
     @ViewBuilder
@@ -174,8 +183,6 @@ struct StartSessionView: View {
                     isLoading = false
                     if words.isEmpty {
                         errorMessage = "Queue is empty — add words via the browser extension first"
-                    } else {
-                        showPractice = true
                     }
                 }
             } catch APIError.unauthorized {
