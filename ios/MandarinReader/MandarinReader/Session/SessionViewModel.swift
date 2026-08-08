@@ -72,6 +72,11 @@ final class SessionViewModel: ObservableObject {
     }
     @Published private(set) var isSessionComplete: Bool = false
 
+    /// True from `start` until `endSession`. StartSessionView drives its
+    /// navigation destination off this, so lowering it unwinds the whole stack
+    /// back to the start screen from any depth.
+    @Published private(set) var isActive: Bool = false
+
     // MARK: - Private state
 
     private let store: PendingReviewStore
@@ -111,12 +116,27 @@ final class SessionViewModel: ObservableObject {
         self.currentRound = 1
         self.roundResults = []
         if words.isEmpty {
+            self.isActive = false
             self.isSessionComplete = true
             self.phase = .summary
         } else {
+            self.isActive = true
             self.isSessionComplete = false
             self.phase = .flash
         }
+    }
+
+    /// Ends the session and returns the UI to the start screen. Leaves
+    /// `pendingReviews` alone: reviews that never reached the backend are
+    /// discarded only by an explicit `clearPersistedReviews()`.
+    func endSession() {
+        words = []
+        cardIndex = 0
+        currentRound = 1
+        roundResults = []
+        isSessionComplete = false
+        phase = .flash
+        isActive = false
     }
 
     /// Called by SummaryView on successful sync and by the recovery banner on

@@ -115,7 +115,7 @@ struct PracticeView: View {
     private var keyboardPanel: some View {
         VStack(spacing: 12) {
             TextField("", text: $input)
-                .font(.system(size: 120, weight: .regular))
+                .font(.system(size: 72, weight: .regular))
                 .multilineTextAlignment(.center)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
@@ -231,7 +231,10 @@ struct PracticeView: View {
         VStack(spacing: 4) {
             if session.phase == .flash && flashVisible {
                 Text(word.traditional)
-                    .font(.system(size: 100, weight: .regular))
+                    .font(.system(size: 80, weight: .regular))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.4)
+                    .padding(.horizontal, 8)
                     .transition(.opacity)
             }
             HStack(spacing: 12) {

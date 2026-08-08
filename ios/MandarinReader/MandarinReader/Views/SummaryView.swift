@@ -4,7 +4,6 @@ struct SummaryView: View {
 
     @ObservedObject var session: SessionViewModel
     @EnvironmentObject private var settings: AppSettings
-    @Environment(\.dismiss) private var dismiss
 
     enum SyncState: Equatable {
         case pending
@@ -99,7 +98,7 @@ struct SummaryView: View {
             VStack(spacing: 12) {
                 Label("Results synced", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                Button("New Session") { dismiss() }
+                Button("New Session") { session.endSession() }
                     .buttonStyle(.borderedProminent)
             }
         case .failed(let message):
@@ -108,7 +107,7 @@ struct SummaryView: View {
                 HStack(spacing: 12) {
                     Button("Discard & Exit") {
                         session.clearPersistedReviews()
-                        dismiss()
+                        session.endSession()
                     }
                     .buttonStyle(.bordered)
                     Button("Retry") { sync() }
