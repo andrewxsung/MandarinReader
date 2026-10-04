@@ -195,9 +195,10 @@ git commit -m "test: add pytest infrastructure with test database"
 - **Fixture layout deviates from the Step 3 snippet above.** `_fresh_schema` became
   a non-autouse fixture named `db_schema`, depended on by `client` and `db`, so
   later pure-unit tests (password hashing, token helpers) run without Postgres.
-  `ANTHROPIC_API_KEY` is overwritten with a dummy sentinel rather than popped,
-  because `load_dotenv()` in `app/database.py` would otherwise re-populate a
-  popped var from `backend/.env`. See `backend/tests/conftest.py` for the
+  `ANTHROPIC_API_KEY` is set to `""` rather than popped, because `load_dotenv()`
+  in `app/database.py` would otherwise re-populate a popped var from
+  `backend/.env`. Empty rather than a dummy value so `if api_key:` guards (e.g.
+  `routers/study.py`) don't fire real network calls in tests. See `backend/tests/conftest.py` for the
   as-built version.
 
 ---

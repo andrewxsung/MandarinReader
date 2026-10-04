@@ -5,9 +5,10 @@ os.environ["DATABASE_URL"] = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://localhost/mandarinreader_test"
 )
 # Tests must never hit the real API. app.database calls load_dotenv(); a *popped*
-# var would be re-populated from backend/.env. Setting a dummy value wins —
-# load_dotenv doesn't override vars that are already set.
-os.environ["ANTHROPIC_API_KEY"] = "test-key-not-a-real-credential"
+# var would be re-populated from backend/.env, but load_dotenv doesn't override a
+# var that is already set — even to "". Empty (not a dummy key) so code guarded by
+# `if api_key:` stays off instead of making a doomed network call.
+os.environ["ANTHROPIC_API_KEY"] = ""
 
 import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
