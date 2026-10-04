@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 
+import pytest
 from sqlalchemy import select
 
 from app.models import Encounter, Page, User, Word
@@ -7,6 +8,7 @@ from app.models import Encounter, Page, User, Word
 
 async def _signup(client, email: str) -> dict:
     resp = await client.post("/api/auth/signup", json={"email": email, "password": "password123"})
+    assert resp.status_code == 201
     return {"Authorization": f"Bearer {resp.json()['token']}"}
 
 
@@ -48,8 +50,25 @@ async def test_queue_is_per_user(client, db):
     assert [w["traditional"] for w in queue_b] == ["狗"]
 
 
-async def test_queue_requires_auth(client):
-    assert (await client.get("/api/queue")).status_code == 401
+PROTECTED_ROUTES = [
+    ("GET", "/api/queue", None),
+    ("POST", "/api/review/1", {"result": "known"}),
+    ("GET", "/api/words", None),
+    ("GET", "/api/recent", None),
+    ("GET", "/api/word/貓", None),
+    ("GET", "/api/study/plan", None),
+    ("GET", "/api/study/free", None),
+    ("GET", "/api/auth/me", None),
+    ("POST", "/api/ingest", {"url": "https://x.com", "title": "t", "page_text": "這是一篇關於貓的文章。"}),
+]
+
+
+@pytest.mark.parametrize("method,path,body", PROTECTED_ROUTES)
+@pytest.mark.parametrize("auth_header", [None, "Bearer bogus"])
+async def test_protected_routes_require_auth(client, method, path, body, auth_header):
+    headers = {"Authorization": auth_header} if auth_header else {}
+    resp = await client.request(method, path, json=body, headers=headers)
+    assert resp.status_code == 401
 
 
 async def test_words_list_is_per_user(client, db):
@@ -68,6 +87,11 @@ async def test_cannot_review_another_users_word(client, db):
         f"/api/review/{word_b.id}", json={"result": "known"}, headers=headers_a
     )
     assert resp.status_code == 404
+
+    # The rejected review must not have touched B's word.
+    await db.refresh(word_b)
+    assert word_b.familiarity_score == 0
+    assert word_b.last_reviewed is None
 
 
 async def test_review_own_word_works(client, db):

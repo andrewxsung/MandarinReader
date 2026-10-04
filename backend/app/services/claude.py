@@ -63,7 +63,9 @@ def _get_client() -> AsyncAnthropic:
         # time, so check explicitly: a missing key must fail fast and offline.
         if not os.environ.get("ANTHROPIC_API_KEY"):
             raise AnalysisError("ANTHROPIC_API_KEY not configured")
-        _client = AsyncAnthropic()  # reads ANTHROPIC_API_KEY from the environment
+        # Reads ANTHROPIC_API_KEY from the environment. The SDK default timeout
+        # is 600s — far too long to hold a request handler open.
+        _client = AsyncAnthropic(timeout=60.0, max_retries=2)
     return _client
 
 
@@ -87,8 +89,20 @@ def parse_analysis(raw: str) -> PageAnalysis:
         cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned
         cleaned = cleaned.rsplit("```", 1)[0]
     try:
-        return PageAnalysis.model_validate(json.loads(cleaned))
-    except (json.JSONDecodeError, ValidationError) as exc:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        # Fallback for one-line fences or chatter around the JSON: take the
+        # outermost {...} span and try once more.
+        start, end = cleaned.find("{"), cleaned.rfind("}")
+        if start == -1 or end <= start:
+            raise AnalysisError(f"unparseable Claude response: {exc}") from exc
+        try:
+            data = json.loads(cleaned[start:end + 1])
+        except json.JSONDecodeError as exc2:
+            raise AnalysisError(f"unparseable Claude response: {exc2}") from exc2
+    try:
+        return PageAnalysis.model_validate(data)
+    except ValidationError as exc:
         raise AnalysisError(f"unparseable Claude response: {exc}") from exc
 
 

@@ -76,6 +76,8 @@ class Word(Base):
 
 
 class Encounter(Base):
+    # No user_id column: always reach encounters through a user-scoped Word —
+    # never filter them by source_url alone (two users can capture the same URL).
     __tablename__ = "encounters"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

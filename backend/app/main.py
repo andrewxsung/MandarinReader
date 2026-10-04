@@ -1,8 +1,10 @@
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from .database import engine, Base
 from .routers import auth, ingest, queue, review, words
@@ -26,6 +28,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # FastAPI's default handler echoes the submitted `input` (e.g. a rejected
+    # password) and crashes with a 500 if that input holds a lone surrogate.
+    # Return only where/what/why.
+    return JSONResponse(
+        status_code=422,
+        content={"detail": [
+            {k: v for k, v in err.items() if k not in ("input", "ctx", "url")}
+            for err in exc.errors()
+        ]},
+    )
+
 
 app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(ingest.router, prefix="/api", tags=["ingest"])

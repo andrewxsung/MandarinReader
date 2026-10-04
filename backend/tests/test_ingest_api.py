@@ -44,6 +44,17 @@ async def test_ingest_calls_claude_and_stores_words(client, monkeypatch):
     assert sorted(w["traditional"] for w in queue) == ["狗", "貓"]
 
 
+async def test_ingest_strips_whitespace_from_words(client, monkeypatch):
+    monkeypatch.setattr(claude, "analyze_page", fake_analysis(" 貓", "貓"))
+    headers = await _signup(client)
+
+    body = (await client.post("/api/ingest", json=PAYLOAD, headers=headers)).json()
+    assert body["words_added"] == 1
+    assert body["words_updated"] == 1
+    queue = (await client.get("/api/queue", headers=headers)).json()
+    assert [w["traditional"] for w in queue] == ["貓"]
+
+
 async def test_ingest_requires_auth(client):
     assert (await client.post("/api/ingest", json=PAYLOAD)).status_code == 401
 
@@ -103,7 +114,32 @@ def test_parse_analysis_plain_json():
     assert [w.word for w in analysis.key_words] == ["貓"]
 
 
-@pytest.mark.parametrize("raw", ["not json", '{"page_purpose": "p"}', "```json\n```", ""])
+@pytest.mark.parametrize("raw", [
+    '```json {"page_purpose": "p", "key_words": []}```',             # one-line fence
+    'Here you go:\n```json\n{"page_purpose": "p", "key_words": []}\n```',  # preamble
+    'Sure! {"page_purpose": "p", "key_words": []} Hope that helps.',   # bare chatter
+])
+def test_parse_analysis_tolerates_wrapped_json(raw):
+    assert claude.parse_analysis(raw).page_purpose == "p"
+
+
+def test_claude_client_has_short_timeout_and_retries(monkeypatch):
+    seen = {}
+
+    def _fake_client(**kwargs):
+        seen.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(claude, "_client", None)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-not-a-real-key")
+    monkeypatch.setattr(claude, "AsyncAnthropic", _fake_client)
+    claude._get_client()
+    assert seen == {"timeout": 60.0, "max_retries": 2}
+
+
+@pytest.mark.parametrize(
+    "raw", ["not json", '{"page_purpose": "p"}', "```json\n```", "", "{ broken } {"]
+)
 def test_parse_analysis_rejects_bad_output(raw):
     with pytest.raises(claude.AnalysisError):
         claude.parse_analysis(raw)

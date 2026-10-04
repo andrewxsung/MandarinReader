@@ -46,10 +46,11 @@ async def ingest(
     added = 0
     updated = 0
     for extracted in analysis.key_words:
-        if not is_cjk(extracted.word):
+        word = extracted.word.strip()  # " 貓" and "貓" must be the same word
+        if not is_cjk(word):
             continue
         _, is_new = await upsert_word(
-            db, user_id, extracted.word, "extension_page", payload.url, extracted.context_sentence
+            db, user_id, word, "extension_page", payload.url, extracted.context_sentence
         )
         if is_new:
             added += 1

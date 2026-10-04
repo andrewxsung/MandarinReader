@@ -23,11 +23,17 @@ _DUMMY_HASH = hash_password("dummy-password-for-timing")
 async def _open_session(db: AsyncSession, user_id: int) -> str:
     token = new_token()
     now = datetime.now(timezone.utc)
+    # Opportunistic cleanup: drop this user's dead sessions so the table
+    # doesn't grow forever with one row per login.
+    await db.execute(
+        delete(AuthSession).where(AuthSession.user_id == user_id, AuthSession.expires_at < now)
+    )
     db.add(AuthSession(
         user_id=user_id,
         token_hash=hash_token(token),
         created_at=now,
         expires_at=now + SESSION_TTL,
+        last_used_at=now,
     ))
     return token
 

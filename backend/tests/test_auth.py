@@ -88,3 +88,52 @@ async def test_active_session_expiry_slides(client, db):
     sess = (await db.execute(select(AuthSession))).scalar_one()
     await db.refresh(sess)
     assert sess.expires_at > stale + timedelta(days=8)  # slid back to ~now+30d
+
+
+# --- validation errors must not echo input ---
+
+async def test_validation_error_does_not_echo_password(client):
+    secret = "s3cr3t!"  # too short (< 8) → 422
+    resp = await client.post("/api/auth/signup", json={"email": "a@x.com", "password": secret})
+    assert resp.status_code == 422
+    assert secret not in resp.text
+    for err in resp.json()["detail"]:
+        assert {"loc", "msg", "type"} <= err.keys()
+        assert "input" not in err and "ctx" not in err and "url" not in err
+
+
+async def test_validation_error_with_lone_surrogate_is_422_not_500(client):
+    # The \ud800 escape must reach the server unparsed, so send raw bytes.
+    raw = b'{"email":"a@x.com","password":"abcdefgh\\ud800"}'
+    resp = await client.post(
+        "/api/auth/signup", content=raw, headers={"Content-Type": "application/json"}
+    )
+    assert resp.status_code == 422
+
+
+# --- session hygiene ---
+
+async def test_login_purges_own_expired_sessions_and_sets_last_used(client, db):
+    await client.post("/api/auth/signup", json=SIGNUP)
+    other = await client.post(
+        "/api/auth/signup", json={"email": "other@example.com", "password": "password123"}
+    )
+    assert other.status_code == 201
+    # Expire every session (both users).
+    past = datetime.now(timezone.utc) - timedelta(days=1)
+    await db.execute(update(AuthSession).values(expires_at=past))
+    await db.commit()
+
+    resp = await client.post("/api/auth/login", json=SIGNUP)
+    assert resp.status_code == 200
+
+    db.expire_all()
+    sessions = (await db.execute(select(AuthSession))).scalars().all()
+    # Remaining: the other user's expired session (untouched — purge is per
+    # user) + my fresh one. My own expired signup session is gone.
+    assert len(sessions) == 2
+    old, new = sorted(sessions, key=lambda s: s.expires_at)
+    assert old.expires_at == past
+    assert new.expires_at > datetime.now(timezone.utc)
+    assert new.user_id != old.user_id
+    assert new.last_used_at is not None
