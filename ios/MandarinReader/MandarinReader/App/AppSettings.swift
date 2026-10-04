@@ -33,6 +33,6 @@ final class AppSettings: ObservableObject {
     /// Convenience for wiring APIClient. Nil if `backendURL` is invalid.
     func makeAPIClient() -> APIClient? {
         guard let url = URL(string: backendURL), !apiKey.isEmpty else { return nil }
-        return APIClient(baseURL: url, apiKey: apiKey)
+        return APIClient(baseURL: url, token: apiKey)
     }
 }
