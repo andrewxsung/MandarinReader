@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MandarinReader",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Capture Traditional Chinese vocabulary from pages you visit and build your personal learning queue.",
   "permissions": [
     "activeTab",
@@ -10,7 +10,8 @@
     "tabs"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "http://localhost:8000/*",
+    "https://mandarinreader-production.up.railway.app/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -23,6 +24,5 @@
       "128": "icons/icon128.png"
     },
     "default_title": "MandarinReader — Capture this page"
-  },
-  "options_page": "options.html"
+  }
 }
