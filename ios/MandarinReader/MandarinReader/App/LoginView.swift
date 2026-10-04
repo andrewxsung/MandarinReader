@@ -22,12 +22,14 @@ struct LoginView: View {
 
             VStack(spacing: 12) {
                 TextField("Email", text: $email)
-                    .textContentType(.emailAddress)
+                    .textContentType(.username)
                     .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 SecureField("Password (min 8 characters)", text: $password)
                     .textContentType(isSigningUp ? .newPassword : .password)
+                    .submitLabel(.go)
+                    .onSubmit(submit)
             }
             .textFieldStyle(.roundedBorder)
             .frame(maxWidth: 360)
@@ -66,6 +68,7 @@ struct LoginView: View {
     }
 
     private func submit() {
+        guard !isBusy else { return }
         let email = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard email.contains("@") else {
             errorMessage = "Enter a valid email address"

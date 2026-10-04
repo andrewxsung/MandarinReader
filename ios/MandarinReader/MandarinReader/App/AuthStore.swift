@@ -22,7 +22,9 @@ final class AuthStore: ObservableObject {
         self.urlSession = urlSession
         let saved = storage.load()
         self.token = saved?.token
-        self.email = saved?.email
+        // The Keychain token survives app deletion but the UserDefaults email
+        // doesn't, so after a reinstall the stored email can be "".
+        self.email = saved?.email.isEmpty == false ? saved?.email : nil
     }
 
     // Required by this project's Xcode 26 setup: @MainActor classes need an
@@ -52,7 +54,11 @@ final class AuthStore: ObservableObject {
     }
 
     /// Call when any API request returns 401 — the session was revoked or expired.
-    func handleUnauthorized() {
+    /// Pass the `token` of the APIClient that made the failing request: a slow
+    /// request sent with an old token can come back 401 after the user has
+    /// signed in again, and must not clear the new session.
+    func handleUnauthorized(rejectedToken: String?) {
+        guard rejectedToken == token else { return }
         clear()
     }
 

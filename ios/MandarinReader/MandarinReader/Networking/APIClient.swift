@@ -14,7 +14,8 @@ enum APIError: Error, Equatable {
 /// `token` is nil for the unauthenticated auth calls (signup/login).
 final class APIClient {
     private let baseURL: URL
-    private let token: String?
+    /// Readable so callers can tell AuthStore which token a 401 rejected.
+    let token: String?
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
@@ -27,6 +28,10 @@ final class APIClient {
         self.decoder.keyDecodingStrategy = .convertFromSnakeCase
         self.encoder = JSONEncoder()
     }
+
+    // MainActor by the module's default isolation; Xcode 26's back-deployed
+    // MainActor deinit shim crashes without an explicit nonisolated deinit.
+    nonisolated deinit { }
 
     /// `GET /api/queue?n={count}` — returns the next N words from the priority queue.
     func fetchQueue(count: Int) async throws -> [WordQueueItem] {

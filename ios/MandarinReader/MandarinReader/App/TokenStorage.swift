@@ -29,7 +29,11 @@ struct KeychainTokenStorage: TokenStorage {
         // Readable after first unlock (so background work can use it) and never
         // migrated to another device via backups.
         insert[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(insert as CFDictionary, nil)
+        let status = SecItemAdd(insert as CFDictionary, nil)
+        // assertionFailure only traps in Debug (-Onone); it's a no-op in Release.
+        if status != errSecSuccess {
+            assertionFailure("Keychain save failed: \(status)")
+        }
         UserDefaults.standard.set(email, forKey: Self.emailKey)
     }
 

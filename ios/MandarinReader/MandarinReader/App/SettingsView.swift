@@ -11,8 +11,8 @@ struct SettingsView: View {
                 Section("Account") {
                     LabeledContent("Signed in as", value: auth.email ?? "—")
                     Button("Sign Out", role: .destructive) {
-                        auth.signOut()
                         dismiss()
+                        auth.signOut()
                     }
                 }
 

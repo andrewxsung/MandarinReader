@@ -139,7 +139,7 @@ struct SummaryView: View {
                 // Token revoked/expired. Reviews stay persisted and are offered
                 // by StartSessionView's recovery banner after signing back in.
                 await MainActor.run {
-                    auth.handleUnauthorized()  // returns the app to LoginView
+                    auth.handleUnauthorized(rejectedToken: client.token)  // returns the app to LoginView
                 }
             } catch {
                 await MainActor.run {

@@ -155,7 +155,7 @@ struct StartSessionView: View {
                 // banner offers them again after the user signs back in.
                 await MainActor.run {
                     isRecovering = false
-                    auth.handleUnauthorized()  // returns the app to LoginView
+                    auth.handleUnauthorized(rejectedToken: client.token)  // returns the app to LoginView
                 }
             } catch {
                 await MainActor.run {
@@ -183,7 +183,7 @@ struct StartSessionView: View {
             } catch APIError.unauthorized {
                 await MainActor.run {
                     isLoading = false
-                    auth.handleUnauthorized()  // returns the app to LoginView
+                    auth.handleUnauthorized(rejectedToken: client.token)  // returns the app to LoginView
                 }
             } catch {
                 await MainActor.run {

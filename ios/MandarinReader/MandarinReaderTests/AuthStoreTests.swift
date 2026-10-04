@@ -36,13 +36,32 @@ final class AuthStoreTests: XCTestCase {
         XCTAssertNil(store.email)
     }
 
-    func test_handleUnauthorizedClearsState() {
+    func test_initMapsEmptyStoredEmailToNil() {
+        // Keychain survives app deletion but UserDefaults doesn't, so after a
+        // reinstall load() returns the token with an empty email.
+        let store = AuthStore(storage: InMemoryTokenStorage(token: "t", email: ""))
+        XCTAssertTrue(store.isSignedIn)
+        XCTAssertNil(store.email)
+    }
+
+    func test_handleUnauthorizedWithCurrentTokenClearsState() {
         let storage = InMemoryTokenStorage(token: "tok123", email: "a@x.com")
         let store = AuthStore(storage: storage)
-        store.handleUnauthorized()
+        store.handleUnauthorized(rejectedToken: "tok123")
         XCTAssertFalse(store.isSignedIn)
         XCTAssertNil(store.email)
         XCTAssertNil(storage.load())
+    }
+
+    func test_handleUnauthorizedWithStaleTokenKeepsSession() {
+        // A slow request made with an old token returns 401 after the user
+        // signed in again — it must not clear the new session.
+        let storage = InMemoryTokenStorage(token: "new", email: "a@x.com")
+        let store = AuthStore(storage: storage)
+        store.handleUnauthorized(rejectedToken: "old")
+        XCTAssertTrue(store.isSignedIn)
+        XCTAssertEqual(store.email, "a@x.com")
+        XCTAssertEqual(storage.load()?.token, "new")
     }
 
     func test_signInPersistsToken() async throws {
