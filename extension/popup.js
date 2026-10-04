@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         headers: { Authorization: `Bearer ${authToken}` },
       }).catch(() => {});
     }
-    await chrome.storage.local.remove(["authToken", "authEmail"]);
+    await chrome.storage.local.remove(["authToken", "authEmail", "lastCapture"]);
     await refreshView();
   });
 
@@ -145,6 +145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       mainView.classList.add("hidden");
       authView.classList.remove("hidden");
       setStatus("", "");
+      lastCaptureEl.textContent = "";
     }
   }
 

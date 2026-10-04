@@ -64,17 +64,20 @@ async function handleCapture(tabId) {
   }
 
   if (resp.status === 401) {
-    await chrome.storage.local.remove(["authToken", "authEmail"]);
+    await chrome.storage.local.remove(["authToken", "authEmail", "lastCapture"]);
     return { success: false, needsAuth: true, error: "Session expired — please sign in again." };
+  }
+  if (resp.status === 422) {
+    return { success: false, error: "This page's text couldn't be processed." };
   }
   if (resp.status === 429) {
     return { success: false, error: "Daily capture limit reached — try again tomorrow." };
   }
-  if (resp.status === 502) {
+  if (resp.status === 502 || resp.status === 503 || resp.status === 504) {
     return { success: false, error: "Analysis failed — try again." };
   }
   if (!resp.ok) {
-    const text = await resp.text();
+    const text = (await resp.text()).slice(0, 200);
     return { success: false, error: `Backend returned ${resp.status}: ${text}` };
   }
 
