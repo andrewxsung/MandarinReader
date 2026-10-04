@@ -135,7 +135,7 @@ def test_claude_client_has_short_timeout_and_retries(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-not-a-real-key")
     monkeypatch.setattr(claude, "AsyncAnthropic", _fake_client)
     claude._get_client()
-    assert seen == {"timeout": 60.0, "max_retries": 2}
+    assert seen == {"timeout": 25.0, "max_retries": 0}
 
 
 @pytest.mark.parametrize(

@@ -65,7 +65,8 @@ def _get_client() -> AsyncAnthropic:
             raise AnalysisError("ANTHROPIC_API_KEY not configured")
         # Reads ANTHROPIC_API_KEY from the environment. The SDK default timeout
         # is 600s — far too long to hold a request handler open.
-        _client = AsyncAnthropic(timeout=60.0, max_retries=2)
+        # Stay under Chrome's 30s MV3 fetch limit: no retries; a failure returns 502 and the user retries.
+        _client = AsyncAnthropic(timeout=25.0, max_retries=0)
     return _client
 
 
