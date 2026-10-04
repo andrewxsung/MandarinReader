@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from .models import Word, Encounter, Page, SourceType
 from .services.cedict import lookup_cedict, lookup_pinyin, format_definitions
 from .services.priority import compute_priority
@@ -51,19 +52,19 @@ async def upsert_word(
     Insert or update a word in the corpus.
     Returns (word, is_new).
     """
-    result = await db.execute(
+    locked_select = (
         select(Word)
         .where(Word.user_id == user_id, Word.traditional == word_text)
         .with_for_update()
     )
-    word = result.scalar_one_or_none()
+    word = (await db.execute(locked_select)).scalar_one_or_none()
     is_new = word is None
 
     if is_new:
         cedict_entry = await lookup_cedict(db, word_text)
         pinyin = await lookup_pinyin(db, word_text)
         now = datetime.now(timezone.utc)
-        word = Word(
+        candidate = Word(
             user_id=user_id,
             traditional=word_text,
             pinyin=pinyin,
@@ -76,9 +77,19 @@ async def upsert_word(
             created_at=now,
             updated_at=now,
         )
-        db.add(word)
-        await db.flush()
-    else:
+        try:
+            # Savepoint: a concurrent ingest of the same new word may insert it
+            # between our select (no row to lock) and this insert.
+            async with db.begin_nested():
+                db.add(candidate)
+                await db.flush()
+            word = candidate
+        except IntegrityError:
+            # Lost the race — the row exists now; lock it and update instead.
+            word = (await db.execute(locked_select)).scalar_one()
+            is_new = False
+
+    if not is_new:
         word.encounter_count += 1
 
         # Check if this source_type has been seen before for this word

@@ -5,23 +5,18 @@ from pydantic import BaseModel, EmailStr, Field
 
 # --- Ingest ---
 
-class WordInput(BaseModel):
-    word: str
-    context_sentence: str | None = None
-
-
 class IngestRequest(BaseModel):
     url: str
     title: str | None = None
-    page_purpose: str | None = None
-    words: list[WordInput]
-    source_type: Literal["extension_page", "manual_paste", "camera"] = "extension_page"
+    page_text: str = Field(min_length=10, max_length=8000)
 
 
 class IngestResponse(BaseModel):
     words_added: int
     words_updated: int
     page_id: int
+    page_purpose: str
+    total_words: int
 
 
 # --- Queue ---
