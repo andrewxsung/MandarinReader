@@ -2,7 +2,7 @@ import SwiftUI
 
 struct StartSessionView: View {
 
-    @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var auth: AuthStore
     @StateObject private var session = SessionViewModel(store: UserDefaultsPendingReviewStore())
 
     @State private var wordCount: Int = 20
@@ -45,17 +45,11 @@ struct StartSessionView: View {
                             }
                             .frame(maxWidth: 320)
                             .padding()
-                            .background(settings.isConfigured ? Color.accentColor : Color.gray)
+                            .background(Color.accentColor)
                             .foregroundStyle(.white)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
-                        .disabled(!settings.isConfigured || isLoading)
-
-                        if !settings.isConfigured {
-                            Text("Configure backend URL and API key in Settings first")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                        .disabled(isLoading)
 
                         if let errorMessage {
                             Text(errorMessage)
@@ -128,7 +122,7 @@ struct StartSessionView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!settings.isConfigured || isRecovering)
+                .disabled(isRecovering)
             }
         }
         .padding()
@@ -138,10 +132,7 @@ struct StartSessionView: View {
     }
 
     private func syncRecovered() {
-        guard let client = settings.makeAPIClient() else {
-            recoveryMessage = "Backend not configured"
-            return
-        }
+        let client = auth.makeAPIClient()
         recoveryMessage = nil
         isRecovering = true
         let reviews = session.pendingReviews
@@ -159,6 +150,13 @@ struct StartSessionView: View {
                     session.clearPersistedReviews()
                     isRecovering = false
                 }
+            } catch APIError.unauthorized {
+                // Token revoked/expired. Pending reviews stay persisted, so the
+                // banner offers them again after the user signs back in.
+                await MainActor.run {
+                    isRecovering = false
+                    auth.handleUnauthorized()  // returns the app to LoginView
+                }
             } catch {
                 await MainActor.run {
                     isRecovering = false
@@ -169,10 +167,7 @@ struct StartSessionView: View {
     }
 
     private func startSession() {
-        guard let client = settings.makeAPIClient() else {
-            errorMessage = "Invalid backend URL"
-            return
-        }
+        let client = auth.makeAPIClient()
         errorMessage = nil
         isLoading = true
         Task {
@@ -188,7 +183,7 @@ struct StartSessionView: View {
             } catch APIError.unauthorized {
                 await MainActor.run {
                     isLoading = false
-                    errorMessage = "Invalid API key"
+                    auth.handleUnauthorized()  // returns the app to LoginView
                 }
             } catch {
                 await MainActor.run {
@@ -202,5 +197,5 @@ struct StartSessionView: View {
 
 #Preview {
     StartSessionView()
-        .environmentObject(AppSettings())
+        .environmentObject(AuthStore(storage: InMemoryTokenStorage()))
 }

@@ -3,7 +3,6 @@ import SwiftUI
 struct PracticeView: View {
 
     @ObservedObject var session: SessionViewModel
-    @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
 
     @State private var input = ""
@@ -376,6 +375,6 @@ struct PracticeView: View {
     ])
     return NavigationStack {
         PracticeView(session: session)
-            .environmentObject(AppSettings())
+            .environmentObject(AuthStore(storage: InMemoryTokenStorage()))
     }
 }
