@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import Literal
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 
 
 # --- Ingest ---
@@ -89,3 +89,19 @@ class StudyPlanResponse(BaseModel):
 class FreeStudyResponse(BaseModel):
     known_practice: list[WordQueueItem]
     new_learning: list[WordQueueItem]
+
+
+# --- Auth ---
+
+class CredentialsRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=200)
+
+
+class AuthResponse(BaseModel):
+    token: str
+    email: str
+
+
+class MeResponse(BaseModel):
+    email: str
