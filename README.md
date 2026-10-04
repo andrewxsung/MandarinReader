@@ -104,7 +104,7 @@ MandarinReader/
 
 ## API Endpoints
 
-All `/api/*` endpoints except signup and login require an `Authorization: Bearer <token>` header; every user only sees their own vocabulary. `/health` is always public.
+All `/api/*` endpoints except signup, login and logout (a no-op without a token) require an `Authorization: Bearer <token>` header; every user only sees their own vocabulary. `/health` is always public.
 
 | Method | Path | Description |
 |---|---|---|
@@ -147,6 +147,8 @@ The static web dashboard (`backend/static/index.html`) predates accounts and doe
 
 ### Backend
 ```bash
+(cd backend && pip install -r requirements.txt)
+
 createdb mandarinreader
 psql mandarinreader < backend/migrations/001_initial_schema.sql
 
@@ -157,7 +159,6 @@ psql mandarinreader < backend/migrations/001_initial_schema.sql
 psql -v ON_ERROR_STOP=1 mandarinreader < backend/migrations/003_users_auth.sql
 
 cd backend
-pip install -r requirements.txt
 ANTHROPIC_API_KEY=sk-ant-... uvicorn app.main:app --reload
 ```
 
@@ -180,7 +181,7 @@ CORS_ORIGINS=*
 
 - **Backend URL:** `https://mandarinreader-production.up.railway.app`
 - **Platform:** Railway hobby plan (~$5–7/mo, Postgres included)
-- **Auth:** email/password accounts; `Authorization: Bearer <token>` required on all `/api/*` routes except signup/login
+- **Auth:** email/password accounts; `Authorization: Bearer <token>` required on all `/api/*` routes except signup/login/logout
 - **Dockerfile:** `backend/Dockerfile` — `python:3.12-slim`, uvicorn on port 8000
 
 Railway env vars to set: `DATABASE_URL` (auto-provided), `ANTHROPIC_API_KEY`, `CORS_ORIGINS`, `PORT=8000`. (`MANDARINREADER_API_KEY` is no longer used — delete it from the Railway service.)

@@ -25,6 +25,7 @@ def fake_analysis(*words: str):
 
 async def _signup(client, email="a@x.com") -> dict:
     resp = await client.post("/api/auth/signup", json={"email": email, "password": "password123"})
+    assert resp.status_code == 201
     return {"Authorization": f"Bearer {resp.json()['token']}"}
 
 
