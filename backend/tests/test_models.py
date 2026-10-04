@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.models import AuthSession, User, Word
@@ -36,17 +37,28 @@ async def test_word_duplicate_same_user_rejected(db):
     db.add(_word(a.id, "貓"))
     await db.commit()
     db.add(_word(a.id, "貓"))
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError, match="words_user_traditional_key"):
         await db.commit()
+    await db.rollback()
 
 
-async def test_auth_session_links_user(db):
+async def test_deleting_user_cascades_to_sessions_and_words(db):
     now = datetime.now(timezone.utc)
     a = User(email="a@x.com", password_hash="h", created_at=now)
     db.add(a)
     await db.flush()
+    user_id = a.id
     db.add(AuthSession(
-        user_id=a.id, token_hash="abc123", created_at=now,
+        user_id=user_id, token_hash="abc123", created_at=now,
         expires_at=now + timedelta(days=30),
     ))
+    db.add(_word(user_id, "貓"))
     await db.commit()
+
+    # Core DELETE (no ORM relationships involved) so this proves the DB-level
+    # ON DELETE CASCADE on sessions.user_id and words.user_id.
+    await db.execute(delete(User).where(User.id == user_id))
+    await db.commit()
+
+    assert await db.scalar(select(func.count()).select_from(AuthSession)) == 0
+    assert await db.scalar(select(func.count()).select_from(Word)) == 0

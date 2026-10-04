@@ -27,6 +27,7 @@ class User(Base):
 
 class AuthSession(Base):
     __tablename__ = "sessions"
+    __table_args__ = (Index("idx_sessions_user_id", "user_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
@@ -54,7 +55,7 @@ class Word(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     traditional: Mapped[str] = mapped_column(Text, nullable=False)
     pinyin: Mapped[str | None] = mapped_column(Text)
@@ -89,10 +90,11 @@ class Encounter(Base):
 
 class Page(Base):
     __tablename__ = "pages"
+    __table_args__ = (Index("idx_pages_user_id", "user_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     url: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[str | None] = mapped_column(Text)

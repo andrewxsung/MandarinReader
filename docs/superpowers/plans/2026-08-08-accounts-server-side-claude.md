@@ -777,6 +777,19 @@ async def me(user: User = Depends(get_current_user)):
     return MeResponse(email=user.email)
 ```
 
+> **Note (signup race):** the `existing` check-then-insert in `signup` is racy — two concurrent signups for the same email can both pass the check, and the second insert would hit the `users.email` unique constraint and surface as a 500. The handler must ALSO catch `IntegrityError` (`from sqlalchemy.exc import IntegrityError`) on the user insert/flush and return 409. Replace the bare `db.add(user)` / `await db.flush()` with:
+>
+> ```python
+> try:
+>     db.add(user)
+>     await db.flush()
+> except IntegrityError:
+>     await db.rollback()
+>     raise HTTPException(status_code=409, detail="An account with this email already exists")
+> ```
+>
+> Keep the up-front `existing` check too — it's the common path and avoids hashing a password for a known-duplicate email.
+
 - [ ] **Step 6: Update main.py wiring**
 
 In `backend/app/main.py`: replace the import of `verify_auth` and the router block:
