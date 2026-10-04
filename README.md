@@ -196,7 +196,7 @@ DATABASE_URL="$RAILWAY_DATABASE_URL" python backend/migrations/002_load_cedict.p
 ```bash
 psql -v ON_ERROR_STOP=1 "$RAILWAY_DATABASE_URL" < backend/migrations/003_users_auth.sql
 ```
-This is **destructive to existing vocabulary by design** — it truncates `words`, `encounters`, and `pages` (start-fresh decision; `cedict` is untouched). It's safe to run before or after deploying the new code, and it refuses to run a second time, so the wipe can't repeat.
+This is **destructive to existing vocabulary by design** — it truncates `words`, `encounters`, and `pages` (start-fresh decision; `cedict` is untouched). Run it right after deploying the new code: the vocabulary routes error until `words.user_id` exists, and the old code breaks once it does. It tolerates the new app having already created the `users`/`sessions` tables at startup, and it refuses to run a second time, so the wipe can't repeat.
 
 ---
 
