@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..auth import get_current_user
 from ..database import get_db
-from ..models import Encounter, Word
+from ..models import Encounter, User, Word
 from ..schemas import FreeStudyResponse, StudyPlanResponse, WordQueueItem
 
 router = APIRouter()
@@ -38,11 +39,15 @@ async def _word_to_queue_item(db: AsyncSession, w: Word) -> WordQueueItem:
 
 
 @router.get("/study/plan", response_model=StudyPlanResponse)
-async def get_study_plan(db: AsyncSession = Depends(get_db)):
+async def get_study_plan(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     today = date.today()
     result = await db.execute(
         select(Word)
         .where(
+            Word.user_id == user.id,
             Word.familiarity_score == 1,
             Word.next_review_date <= today,
         )
@@ -119,10 +124,13 @@ async def get_study_plan(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/study/free", response_model=FreeStudyResponse)
-async def get_free_study(db: AsyncSession = Depends(get_db)):
+async def get_free_study(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     known_result = await db.execute(
         select(Word)
-        .where(Word.familiarity_score == 2)
+        .where(Word.user_id == user.id, Word.familiarity_score == 2)
         .order_by(Word.priority_score.desc())
         .limit(10)
     )
@@ -130,7 +138,7 @@ async def get_free_study(db: AsyncSession = Depends(get_db)):
 
     learning_result = await db.execute(
         select(Word)
-        .where(Word.familiarity_score == 1)
+        .where(Word.user_id == user.id, Word.familiarity_score == 1)
         .order_by(Word.last_reviewed.desc().nullslast())
         .limit(10)
     )

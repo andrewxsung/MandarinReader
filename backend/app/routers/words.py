@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct
+from ..auth import get_current_user
 from ..database import get_db
-from ..models import Word, Encounter, Page
+from ..models import User, Word, Encounter, Page
 from ..services.cedict import lookup_cedict, format_definitions
 from ..schemas import WordStats, WordLookup, WordQueueItem
 
@@ -14,9 +15,11 @@ async def list_words(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     result = await db.execute(
         select(Word)
+        .where(Word.user_id == user.id)
         .order_by(Word.priority_score.desc())
         .limit(limit)
         .offset(offset)
@@ -26,11 +29,17 @@ async def list_words(
 
 
 @router.get("/recent", response_model=list[WordQueueItem])
-async def get_recent(db: AsyncSession = Depends(get_db)):
+async def get_recent(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     """Top 10 words by priority from the last 2 captured pages."""
     # Get the 2 most recent pages
     pages_result = await db.execute(
-        select(Page).order_by(Page.captured_at.desc()).limit(2)
+        select(Page)
+        .where(Page.user_id == user.id)
+        .order_by(Page.captured_at.desc())
+        .limit(2)
     )
     pages = pages_result.scalars().all()
     if not pages:
@@ -42,6 +51,7 @@ async def get_recent(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Word)
         .join(Encounter, Encounter.word_id == Word.id)
+        .where(Word.user_id == user.id)
         .where(Encounter.source_url.in_(urls))
         .where(Word.familiarity_score >= 0)
         .distinct()
@@ -60,9 +70,15 @@ async def get_recent(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/word/{word}", response_model=WordLookup)
-async def get_word(word: str, db: AsyncSession = Depends(get_db)):
+async def get_word(
+    word: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     # Check corpus first
-    corpus_result = await db.execute(select(Word).where(Word.traditional == word))
+    corpus_result = await db.execute(
+        select(Word).where(Word.user_id == user.id, Word.traditional == word)
+    )
     corpus_word = corpus_result.scalar_one_or_none()
 
     if corpus_word:

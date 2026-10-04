@@ -22,11 +22,13 @@ def is_cjk(text: str) -> bool:
 
 async def create_page(
     db: AsyncSession,
+    user_id: int,
     url: str,
     title: str | None,
     page_purpose: str | None,
 ) -> Page:
     page = Page(
+        user_id=user_id,
         url=url,
         title=title,
         page_purpose=page_purpose,
@@ -39,6 +41,7 @@ async def create_page(
 
 async def upsert_word(
     db: AsyncSession,
+    user_id: int,
     word_text: str,
     source_type: str,
     source_url: str | None,
@@ -49,7 +52,9 @@ async def upsert_word(
     Returns (word, is_new).
     """
     result = await db.execute(
-        select(Word).where(Word.traditional == word_text).with_for_update()
+        select(Word)
+        .where(Word.user_id == user_id, Word.traditional == word_text)
+        .with_for_update()
     )
     word = result.scalar_one_or_none()
     is_new = word is None
@@ -59,6 +64,7 @@ async def upsert_word(
         pinyin = await lookup_pinyin(db, word_text)
         now = datetime.now(timezone.utc)
         word = Word(
+            user_id=user_id,
             traditional=word_text,
             pinyin=pinyin,
             definition=format_definitions(cedict_entry) if cedict_entry else None,
@@ -100,7 +106,7 @@ async def upsert_word(
     return word, is_new
 
 
-async def get_queue(db: AsyncSession, n: int = 20) -> list[tuple[Word, str | None]]:
+async def get_queue(db: AsyncSession, user_id: int, n: int = 20) -> list[tuple[Word, str | None]]:
     """Return top N words due for review, with their most recent context sentence."""
     from datetime import date
     from sqlalchemy import or_
@@ -112,6 +118,7 @@ async def get_queue(db: AsyncSession, n: int = 20) -> list[tuple[Word, str | Non
     result = await db.execute(
         select(Word)
         .where(
+            Word.user_id == user_id,
             Word.familiarity_score.in_([0, 1]),
             or_(
                 Word.next_review_date == None,
