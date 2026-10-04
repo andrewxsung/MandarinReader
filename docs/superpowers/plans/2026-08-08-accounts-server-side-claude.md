@@ -180,6 +180,26 @@ git add backend/requirements.txt backend/requirements-dev.txt backend/pytest.ini
 git commit -m "test: add pytest infrastructure with test database"
 ```
 
+**Decisions (recorded during implementation):**
+
+- **Test schema comes from the SQLAlchemy models, not the SQL migrations.** The
+  `db_schema` fixture builds tables via `Base.metadata.create_all`, so the tests
+  exercise `app/models.py` — they do *not* validate that
+  `migrations/003_users_auth.sql` matches. Migration 003 correctness is verified
+  separately against the dev DB in Task 2, Step 6. Keep that step: nothing in the
+  test suite will catch model/migration drift.
+- **Requirements pins were bumped beyond the original plan.** `asyncpg` 0.29.0 and
+  `pydantic` 2.8.0 do not build on Python 3.13 (the venv's interpreter), so they
+  were raised to 0.31.0 and 2.13.0, and `anthropic` to `>=0.94.0`, matching what
+  was already installed. Authorized deviation, not drive-by version churn.
+- **Fixture layout deviates from the Step 3 snippet above.** `_fresh_schema` became
+  a non-autouse fixture named `db_schema`, depended on by `client` and `db`, so
+  later pure-unit tests (password hashing, token helpers) run without Postgres.
+  `ANTHROPIC_API_KEY` is overwritten with a dummy sentinel rather than popped,
+  because `load_dotenv()` in `app/database.py` would otherwise re-populate a
+  popped var from `backend/.env`. See `backend/tests/conftest.py` for the
+  as-built version.
+
 ---
 
 ### Task 2: User/AuthSession models + migration 003
