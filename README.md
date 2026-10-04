@@ -45,9 +45,11 @@ Unknown words use `0.5` as the denominator so they float to the top.
 | Table | Purpose |
 |---|---|
 | `cedict` | CC-CEDICT reference (~115k entries, read-only after import) |
-| `words` | User's vocabulary corpus (one row per unique Traditional word) |
+| `users` | Accounts (email + argon2id password hash) |
+| `sessions` | Bearer-token sessions (SHA-256 of the token, 30-day sliding expiry) |
+| `words` | Per-user vocabulary corpus (one row per user per unique Traditional word) |
 | `encounters` | Append-only log of every word sighting (source, context sentence) |
-| `pages` | Log of pages analyzed by the extension |
+| `pages` | Per-user log of pages analyzed by the extension |
 
 ### familiarity_score values
 - `-1` = ignored (removed from queue)
@@ -63,27 +65,31 @@ Unknown words use `0.5` as the denominator so they float to the top.
 MandarinReader/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI app, CORS, router wiring, auth
-│   │   ├── auth.py              # API key auth dependency (X-API-Key header)
+│   │   ├── main.py              # FastAPI app, CORS, router wiring, validation errors
+│   │   ├── auth.py              # Bearer-session auth dependency (get_current_user)
 │   │   ├── database.py          # Async SQLAlchemy engine + session
 │   │   ├── models.py            # ORM models
 │   │   ├── schemas.py           # Pydantic request/response schemas
 │   │   ├── crud.py              # Core upsert + priority logic (most critical)
 │   │   ├── routers/
-│   │   │   ├── ingest.py        # POST /api/ingest
+│   │   │   ├── auth.py          # POST /api/auth/signup|login|logout, GET /api/auth/me
+│   │   │   ├── ingest.py        # POST /api/ingest (server-side Claude analysis, 50/day)
 │   │   │   ├── queue.py         # GET /api/queue
 │   │   │   ├── review.py        # POST /api/review/{word_id}
 │   │   │   ├── words.py         # GET /api/words, /api/word/{word}, /api/recent
 │   │   │   └── study.py         # GET /api/study/plan, /api/study/free
 │   │   └── services/
+│   │       ├── claude.py        # Claude Haiku page analysis (server-side)
+│   │       ├── security.py      # argon2id password hashing + token helpers
 │   │       ├── srs.py           # SM-2 spaced repetition
 │   │       ├── cedict.py        # CC-CEDICT parser + DB lookup
 │   │       └── priority.py      # Priority score formula
 │   ├── migrations/
 │   │   ├── 001_initial_schema.sql   # Full DB schema — run first
-│   │   └── 002_load_cedict.py       # One-time CEDICT import script
+│   │   ├── 002_load_cedict.py       # One-time CEDICT import script
+│   │   └── 003_users_auth.sql       # Accounts + per-user scoping (wipes vocabulary)
 │   ├── static/
-│   │   └── index.html           # Frontend dashboard (served at /)
+│   │   └── index.html           # Frontend dashboard (served at /) — no auth yet, see below
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── extension/
@@ -98,12 +104,16 @@ MandarinReader/
 
 ## API Endpoints
 
-All `/api/*` endpoints require `X-API-Key` header (when `MANDARINREADER_API_KEY` env var is set). `/health` is always public.
+All `/api/*` endpoints except signup and login require an `Authorization: Bearer <token>` header; every user only sees their own vocabulary. `/health` is always public.
 
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/health` | Health check |
-| `POST` | `/api/ingest` | Receive page + word list from extension |
+| `POST` | `/api/auth/signup` | Create account — body `{email, password}` (password ≥ 8 chars) → `201 {token, email}` |
+| `POST` | `/api/auth/login` | Log in — body `{email, password}` → `{token, email}` |
+| `POST` | `/api/auth/logout` | Revoke the current bearer token → `204` |
+| `GET` | `/api/auth/me` | Current user → `{email}` |
+| `POST` | `/api/ingest` | Analyze page text with Claude server-side and store its vocabulary (50 captures/user/day) |
 | `GET` | `/api/queue?n=20` | Flashcard queue sorted by priority score |
 | `POST` | `/api/review/{word_id}` | Submit review result (`known`/`learning`/`ignore`) |
 | `GET` | `/api/words` | All words with stats (paginated) |
@@ -113,15 +123,18 @@ All `/api/*` endpoints require `X-API-Key` header (when `MANDARINREADER_API_KEY`
 | `GET` | `/api/study/free` | Free study — known + learning word decks |
 
 ### Ingest request shape
+Requires `Authorization: Bearer <token>`. The backend calls Claude itself — clients never hold an Anthropic key.
 ```json
 {
   "url": "https://...",
   "title": "Page title",
-  "page_purpose": "1–2 sentence description",
-  "words": [{"word": "學習", "context_sentence": "..."}],
-  "source_type": "extension_page"
+  "page_text": "visible page text (10–8000 chars)"
 }
 ```
+Returns `{words_added, words_updated, page_id, page_purpose, total_words}`. Errors: `401` no/invalid token, `422` bad body, `429` daily limit reached, `502` Claude analysis failed (including no `ANTHROPIC_API_KEY` configured).
+
+### Known limitation
+The static web dashboard (`backend/static/index.html`) predates accounts and does not yet send auth headers, so its API calls get `401` against this backend.
 
 ---
 
@@ -138,12 +151,17 @@ createdb mandarinreader
 psql mandarinreader < backend/migrations/001_initial_schema.sql
 
 # Place cedict_ts.u8 at backend/data/cedict_ts.u8
-cd backend && python migrations/002_load_cedict.py
+(cd backend && python migrations/002_load_cedict.py)
+
+# Accounts + per-user scoping. Run once; it deliberately fails on a re-run.
+psql -v ON_ERROR_STOP=1 mandarinreader < backend/migrations/003_users_auth.sql
 
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+ANTHROPIC_API_KEY=sk-ant-... uvicorn app.main:app --reload
 ```
+
+`ANTHROPIC_API_KEY` is required by the **backend only** — page analysis runs server-side. Without it, signup/login/queue/review all work, but `POST /api/ingest` returns `502`.
 
 ### Chrome Extension
 1. `chrome://extensions` → Enable Developer Mode → Load unpacked → select `extension/`
@@ -152,8 +170,7 @@ uvicorn app.main:app --reload
 ### Environment Variables (`.env` in `backend/`)
 ```
 DATABASE_URL=postgresql+asyncpg://localhost/mandarinreader
-ANTHROPIC_API_KEY=sk-ant-...
-MANDARINREADER_API_KEY=        # leave blank for local dev (auth skipped)
+ANTHROPIC_API_KEY=sk-ant-...   # backend-only; required for /api/ingest
 CORS_ORIGINS=*
 ```
 
@@ -163,10 +180,10 @@ CORS_ORIGINS=*
 
 - **Backend URL:** `https://mandarinreader-production.up.railway.app`
 - **Platform:** Railway hobby plan (~$5–7/mo, Postgres included)
-- **Auth:** `X-API-Key` header required on all `/api/*` routes
+- **Auth:** email/password accounts; `Authorization: Bearer <token>` required on all `/api/*` routes except signup/login
 - **Dockerfile:** `backend/Dockerfile` — `python:3.12-slim`, uvicorn on port 8000
 
-Railway env vars to set: `DATABASE_URL` (auto-provided), `ANTHROPIC_API_KEY`, `MANDARINREADER_API_KEY`, `CORS_ORIGINS`, `PORT=8000`.
+Railway env vars to set: `DATABASE_URL` (auto-provided), `ANTHROPIC_API_KEY`, `CORS_ORIGINS`, `PORT=8000`. (`MANDARINREADER_API_KEY` is no longer used — delete it from the Railway service.)
 
 After provisioning a new Railway Postgres instance, run migrations:
 ```bash
@@ -174,6 +191,12 @@ psql "$RAILWAY_DATABASE_URL" < backend/migrations/001_initial_schema.sql
 psql "$RAILWAY_DATABASE_URL" -c "ALTER TABLE cedict ADD CONSTRAINT cedict_traditional_pinyin_unique UNIQUE (traditional, pinyin);"
 DATABASE_URL="$RAILWAY_DATABASE_URL" python backend/migrations/002_load_cedict.py
 ```
+
+**Accounts migration (003).** Run once against the Railway DB when rolling out accounts:
+```bash
+psql -v ON_ERROR_STOP=1 "$RAILWAY_DATABASE_URL" < backend/migrations/003_users_auth.sql
+```
+This is **destructive to existing vocabulary by design** — it truncates `words`, `encounters`, and `pages` (start-fresh decision; `cedict` is untouched). It's safe to run before or after deploying the new code, and it refuses to run a second time, so the wipe can't repeat.
 
 ---
 
