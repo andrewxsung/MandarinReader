@@ -168,7 +168,7 @@ ANTHROPIC_API_KEY=sk-ant-... uvicorn app.main:app --reload
 1. `chrome://extensions` → Enable Developer Mode → Load unpacked → select `extension/`
 2. Click the extension icon → **Create one** to make an account (or sign in)
 
-There is no options page and nothing to configure: the backend origin is the `BACKEND_URL` constant in `extension/config.js`, which defaults to `http://localhost:8000`. For a release build, flip it to `https://mandarinreader-production.up.railway.app` (the production value is in the file's comment) and reload the extension.
+There is no options page and nothing to configure: the backend origin is the `BACKEND_URL` constant in `extension/config.js`, which points at production (`https://mandarinreader-production.up.railway.app`). For local backend development, switch it to `http://localhost:8000` (the value is in the file's comment) and reload the extension.
 
 ### Environment Variables (`.env` in `backend/`)
 ```
