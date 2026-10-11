@@ -3,7 +3,7 @@ import SwiftUI
 struct SummaryView: View {
 
     @ObservedObject var session: SessionViewModel
-    @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var auth: AuthStore
 
     enum SyncState: Equatable {
         case pending
@@ -118,10 +118,7 @@ struct SummaryView: View {
     }
 
     private func sync() {
-        guard let client = settings.makeAPIClient() else {
-            syncState = .failed("Backend not configured")
-            return
-        }
+        let client = auth.makeAPIClient()
         syncState = .syncing
         let reviews = session.pendingReviews
         Task {
@@ -137,6 +134,12 @@ struct SummaryView: View {
                 await MainActor.run {
                     session.clearPersistedReviews()
                     syncState = .succeeded
+                }
+            } catch APIError.unauthorized {
+                // Token revoked/expired. Reviews stay persisted and are offered
+                // by StartSessionView's recovery banner after signing back in.
+                await MainActor.run {
+                    auth.handleUnauthorized(rejectedToken: client.token)  // returns the app to LoginView
                 }
             } catch {
                 await MainActor.run {
@@ -158,5 +161,5 @@ struct SummaryView: View {
     session.skip()
     session.skip()
     return SummaryView(session: session)
-        .environmentObject(AppSettings())
+        .environmentObject(AuthStore(storage: InMemoryTokenStorage()))
 }

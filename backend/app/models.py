@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from sqlalchemy import (
-    Integer, Text, Numeric, Date, TIMESTAMP, ForeignKey, Enum as SAEnum, Index
+    Integer, Text, Numeric, Date, TIMESTAMP, ForeignKey, Enum as SAEnum, Index,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -15,6 +16,29 @@ class SourceType(str, enum.Enum):
     camera = "camera"
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+
+
+class AuthSession(Base):
+    __tablename__ = "sessions"
+    __table_args__ = (Index("idx_sessions_user_id", "user_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+
 class CedictEntry(Base):
     __tablename__ = "cedict"
 
@@ -27,9 +51,13 @@ class CedictEntry(Base):
 
 class Word(Base):
     __tablename__ = "words"
+    __table_args__ = (UniqueConstraint("user_id", "traditional", name="words_user_traditional_key"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    traditional: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    traditional: Mapped[str] = mapped_column(Text, nullable=False)
     pinyin: Mapped[str | None] = mapped_column(Text)
     definition: Mapped[str | None] = mapped_column(Text)
     hsk_tier: Mapped[int | None] = mapped_column(Integer)
@@ -48,6 +76,8 @@ class Word(Base):
 
 
 class Encounter(Base):
+    # No user_id column: always reach encounters through a user-scoped Word —
+    # never filter them by source_url alone (two users can capture the same URL).
     __tablename__ = "encounters"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -62,8 +92,12 @@ class Encounter(Base):
 
 class Page(Base):
     __tablename__ = "pages"
+    __table_args__ = (Index("idx_pages_user_id", "user_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     url: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[str | None] = mapped_column(Text)
     page_purpose: Mapped[str | None] = mapped_column(Text)

@@ -1,14 +1,15 @@
 import json
-import os
 from datetime import date
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..auth import get_current_user
 from ..database import get_db
-from ..models import Encounter, Word
+from ..models import Encounter, User, Word
 from ..schemas import FreeStudyResponse, StudyPlanResponse, WordQueueItem
+from ..services import claude
 
 router = APIRouter()
 
@@ -38,11 +39,15 @@ async def _word_to_queue_item(db: AsyncSession, w: Word) -> WordQueueItem:
 
 
 @router.get("/study/plan", response_model=StudyPlanResponse)
-async def get_study_plan(db: AsyncSession = Depends(get_db)):
+async def get_study_plan(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     today = date.today()
     result = await db.execute(
         select(Word)
         .where(
+            Word.user_id == user.id,
             Word.familiarity_score == 1,
             Word.next_review_date <= today,
         )
@@ -80,23 +85,21 @@ async def get_study_plan(db: AsyncSession = Depends(get_db)):
     rationale = "Showing your highest-priority words due for review today."
     selected_ids: set[int] = {w["id"] for w in queue_data[:15]}
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if api_key:
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            message = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=500,
-                temperature=0,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw = message.content[0].text.strip()
-            ai_result = json.loads(raw)
-            rationale = ai_result.get("rationale", rationale)
-            selected_ids = set(int(i) for i in ai_result.get("word_ids", []))
-        except Exception:
-            pass  # fall through to default selection
+    try:
+        # Shared async client (25s timeout, no retries); raises AnalysisError
+        # when no key is configured, which also falls back below.
+        message = await claude.get_client().messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text.strip()
+        ai_result = json.loads(raw)
+        rationale = ai_result.get("rationale", rationale)
+        selected_ids = set(int(i) for i in ai_result.get("word_ids", []))
+    except Exception:
+        pass  # fall through to default selection
 
     id_to_word = {w.id: w for w in words}
     id_to_ctx = {item["id"]: item["context"] for item in queue_data}
@@ -119,10 +122,13 @@ async def get_study_plan(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/study/free", response_model=FreeStudyResponse)
-async def get_free_study(db: AsyncSession = Depends(get_db)):
+async def get_free_study(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     known_result = await db.execute(
         select(Word)
-        .where(Word.familiarity_score == 2)
+        .where(Word.user_id == user.id, Word.familiarity_score == 2)
         .order_by(Word.priority_score.desc())
         .limit(10)
     )
@@ -130,7 +136,7 @@ async def get_free_study(db: AsyncSession = Depends(get_db)):
 
     learning_result = await db.execute(
         select(Word)
-        .where(Word.familiarity_score == 1)
+        .where(Word.user_id == user.id, Word.familiarity_score == 1)
         .order_by(Word.last_reviewed.desc().nullslast())
         .limit(10)
     )

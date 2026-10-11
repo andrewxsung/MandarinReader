@@ -3,12 +3,21 @@ import SwiftUI
 @main
 struct MandarinReaderApp: App {
 
-    @StateObject private var settings = AppSettings()
+    @StateObject private var auth = AuthStore()
+
+    init() {
+        LegacyCleanup.run()
+    }
 
     var body: some Scene {
         WindowGroup {
-            StartSessionView()
-                .environmentObject(settings)
+            if auth.isSignedIn {
+                StartSessionView()
+                    .environmentObject(auth)
+            } else {
+                LoginView()
+                    .environmentObject(auth)
+            }
         }
     }
 }

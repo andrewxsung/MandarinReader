@@ -1,12 +1,13 @@
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from .auth import verify_auth
 from .database import engine, Base
-from .routers import ingest, queue, review, words
+from .routers import auth, ingest, queue, review, words
 from .routers import study
 
 
@@ -28,12 +29,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-_auth = [Depends(verify_auth)]
-app.include_router(ingest.router, prefix="/api", tags=["ingest"], dependencies=_auth)
-app.include_router(queue.router, prefix="/api", tags=["queue"], dependencies=_auth)
-app.include_router(review.router, prefix="/api", tags=["review"], dependencies=_auth)
-app.include_router(words.router, prefix="/api", tags=["words"], dependencies=_auth)
-app.include_router(study.router, prefix="/api", tags=["study"], dependencies=_auth)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # FastAPI's default handler echoes the submitted `input` (e.g. a rejected
+    # password) and crashes with a 500 if that input holds a lone surrogate.
+    # Return only where/what/why.
+    return JSONResponse(
+        status_code=422,
+        content={"detail": [
+            {k: v for k, v in err.items() if k not in ("input", "ctx", "url")}
+            for err in exc.errors()
+        ]},
+    )
+
+
+app.include_router(auth.router, prefix="/api", tags=["auth"])
+app.include_router(ingest.router, prefix="/api", tags=["ingest"])
+app.include_router(queue.router, prefix="/api", tags=["queue"])
+app.include_router(review.router, prefix="/api", tags=["review"])
+app.include_router(words.router, prefix="/api", tags=["words"])
+app.include_router(study.router, prefix="/api", tags=["study"])
 
 
 @app.get("/health")
