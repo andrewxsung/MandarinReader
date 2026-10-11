@@ -6,6 +6,12 @@ importScripts("config.js");
 
 const PAGE_TEXT_LIMIT = 8000;
 
+// The pre-accounts options page stored the user's Claude API key (and backend
+// settings) in chrome.storage.sync. Remove them on install/update.
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.sync.remove(["claudeApiKey", "backendUrl", "mrApiKey"]);
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "captureCurrentPage") {
     handleCapture(request.tabId)

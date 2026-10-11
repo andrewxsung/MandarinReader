@@ -4,6 +4,6 @@ sqlalchemy[asyncio]==2.0.35
 asyncpg==0.31.0
 pydantic==2.13.0
 python-dotenv==1.0.0
-anthropic>=0.94.0
+anthropic==0.94.1
 argon2-cffi==23.1.0
 email-validator==2.2.0

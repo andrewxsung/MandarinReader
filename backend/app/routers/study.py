@@ -1,5 +1,4 @@
 import json
-import os
 from datetime import date
 
 from fastapi import APIRouter, Depends
@@ -10,6 +9,7 @@ from ..auth import get_current_user
 from ..database import get_db
 from ..models import Encounter, User, Word
 from ..schemas import FreeStudyResponse, StudyPlanResponse, WordQueueItem
+from ..services import claude
 
 router = APIRouter()
 
@@ -85,23 +85,21 @@ async def get_study_plan(
     rationale = "Showing your highest-priority words due for review today."
     selected_ids: set[int] = {w["id"] for w in queue_data[:15]}
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if api_key:
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            message = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=500,
-                temperature=0,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw = message.content[0].text.strip()
-            ai_result = json.loads(raw)
-            rationale = ai_result.get("rationale", rationale)
-            selected_ids = set(int(i) for i in ai_result.get("word_ids", []))
-        except Exception:
-            pass  # fall through to default selection
+    try:
+        # Shared async client (25s timeout, no retries); raises AnalysisError
+        # when no key is configured, which also falls back below.
+        message = await claude.get_client().messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=500,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text.strip()
+        ai_result = json.loads(raw)
+        rationale = ai_result.get("rationale", rationale)
+        selected_ids = set(int(i) for i in ai_result.get("word_ids", []))
+    except Exception:
+        pass  # fall through to default selection
 
     id_to_word = {w.id: w for w in words}
     id_to_ctx = {item["id"]: item["context"] for item in queue_data}

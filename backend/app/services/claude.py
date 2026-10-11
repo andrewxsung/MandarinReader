@@ -56,7 +56,9 @@ Page text:
 _client: AsyncAnthropic | None = None
 
 
-def _get_client() -> AsyncAnthropic:
+def get_client() -> AsyncAnthropic:
+    """Shared async client for all server-side Claude calls. Raises
+    AnalysisError if ANTHROPIC_API_KEY is unset."""
     global _client
     if _client is None:
         # The SDK happily constructs with an empty key and only fails at request
@@ -109,7 +111,7 @@ def parse_analysis(raw: str) -> PageAnalysis:
 
 async def analyze_page(page_text: str) -> PageAnalysis:
     try:
-        response = await _get_client().messages.create(
+        response = await get_client().messages.create(
             model=CLAUDE_MODEL,
             max_tokens=MAX_TOKENS,
             temperature=0,

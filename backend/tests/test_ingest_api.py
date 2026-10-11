@@ -1,7 +1,10 @@
+import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+import httpx
 import pytest
+from anthropic import AsyncAnthropic
 from sqlalchemy import select
 
 from app.models import Page, User
@@ -60,14 +63,17 @@ async def test_ingest_requires_auth(client):
     assert (await client.post("/api/ingest", json=PAYLOAD)).status_code == 401
 
 
-async def test_ingest_claude_failure_returns_502(client, monkeypatch):
+async def test_ingest_claude_failure_returns_502(client, monkeypatch, caplog):
     async def _boom(page_text: str):
-        raise claude.AnalysisError("upstream error")
+        raise claude.AnalysisError("upstream error quoting 貓在睡")
     monkeypatch.setattr(claude, "analyze_page", _boom)
     headers = await _signup(client)
 
     resp = await client.post("/api/ingest", json=PAYLOAD, headers=headers)
     assert resp.status_code == 502
+    # The exception message may contain user page text; only its class is logged.
+    assert "AnalysisError" in caplog.text
+    assert "貓在睡" not in caplog.text
 
 
 async def test_ingest_without_api_key_returns_502(client, monkeypatch):
@@ -134,7 +140,7 @@ def test_claude_client_has_short_timeout_and_retries(monkeypatch):
     monkeypatch.setattr(claude, "_client", None)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-not-a-real-key")
     monkeypatch.setattr(claude, "AsyncAnthropic", _fake_client)
-    claude._get_client()
+    claude.get_client()
     assert seen == {"timeout": 25.0, "max_retries": 0}
 
 
@@ -154,6 +160,65 @@ async def test_analyze_page_without_api_key_raises_offline(monkeypatch):
     with pytest.raises(claude.AnalysisError, match="ANTHROPIC_API_KEY"):
         await claude.analyze_page("這是一篇文章")
     assert constructed == []  # never built a client, so never touched the network
+
+
+CANNED_MESSAGE = {
+    "id": "msg_1",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-haiku-4-5-20251001",
+    "content": [{
+        "type": "text",
+        "text": '{"page_purpose":"p","key_words":[{"word":"貓","context_sentence":"貓"}]}',
+    }],
+    "stop_reason": "end_turn",
+    "stop_sequence": None,
+    "usage": {"input_tokens": 1, "output_tokens": 1},
+}
+
+
+def _mock_anthropic(handler) -> AsyncAnthropic:
+    """A real SDK client whose HTTP layer is an in-process mock — no network."""
+    return AsyncAnthropic(
+        api_key="test",
+        max_retries=0,
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+
+
+async def test_analyze_page_through_real_sdk(monkeypatch):
+    # Guards SDK upgrades: exercises the real messages.create request/response
+    # path (kwargs accepted, request serialized, response parsed) offline.
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/v1/messages"
+        body = json.loads(request.content)
+        seen.update(body)
+        return httpx.Response(200, json=CANNED_MESSAGE)
+
+    monkeypatch.setattr(claude, "_client", _mock_anthropic(handler))
+
+    analysis = await claude.analyze_page("這是一篇關於貓的文章")
+
+    assert seen["model"] == claude.CLAUDE_MODEL
+    assert seen["max_tokens"] == claude.MAX_TOKENS
+    assert seen["temperature"] == 0
+    assert "這是一篇關於貓的文章" in seen["messages"][0]["content"]
+    assert analysis.page_purpose == "p"
+    assert [(w.word, w.context_sentence) for w in analysis.key_words] == [("貓", "貓")]
+
+
+async def test_analyze_page_sdk_http_error_raises_analysis_error(monkeypatch):
+    monkeypatch.setattr(
+        claude, "_client",
+        _mock_anthropic(lambda request: httpx.Response(
+            400, json={"type": "error", "error": {"type": "invalid_request_error", "message": "bad"}}
+        )),
+    )
+    with pytest.raises(claude.AnalysisError, match="Claude API error"):
+        await claude.analyze_page("這是一篇文章")
 
 
 def _response(stop_reason, *blocks):

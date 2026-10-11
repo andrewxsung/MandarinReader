@@ -39,7 +39,9 @@ async def ingest(
     try:
         analysis = await claude.analyze_page(payload.page_text)
     except claude.AnalysisError as exc:
-        logger.warning("page analysis failed for user %s: %s", user_id, exc)
+        # Log only the exception class: the message can quote Claude output
+        # derived from the user's page text.
+        logger.warning("page analysis failed for user %s: %s", user_id, type(exc).__name__)
         raise HTTPException(status_code=502, detail="Analysis failed — try again")
 
     page = await create_page(db, user_id, payload.url, payload.title, analysis.page_purpose)
