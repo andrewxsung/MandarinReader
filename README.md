@@ -177,6 +177,20 @@ ANTHROPIC_API_KEY=sk-ant-...   # backend-only; required for /api/ingest
 CORS_ORIGINS=*
 ```
 
+### Running Tests
+Backend (needs a local Postgres; tests never call Anthropic):
+```bash
+pip install -r backend/requirements-dev.txt
+createdb mandarinreader_test
+cd backend && pytest
+```
+
+iOS (from the repo root):
+```bash
+xcodebuild test -project ios/MandarinReader/MandarinReader.xcodeproj -scheme MandarinReader \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:MandarinReaderTests
+```
+
 ---
 
 ## Cloud Deployment (Railway)
@@ -193,6 +207,7 @@ After provisioning a new Railway Postgres instance, run migrations:
 psql "$RAILWAY_DATABASE_URL" < backend/migrations/001_initial_schema.sql
 psql "$RAILWAY_DATABASE_URL" -c "ALTER TABLE cedict ADD CONSTRAINT cedict_traditional_pinyin_unique UNIQUE (traditional, pinyin);"
 DATABASE_URL="$RAILWAY_DATABASE_URL" python backend/migrations/002_load_cedict.py
+psql -v ON_ERROR_STOP=1 "$RAILWAY_DATABASE_URL" < backend/migrations/003_users_auth.sql   # accounts; see below
 ```
 
 **Accounts migration (003).** Run once against the Railway DB when rolling out accounts:
@@ -261,6 +276,7 @@ ios/MandarinReader/MandarinReader/
 │   ├── AuthStore.swift               # Observable auth state: sign in/up/out, 401 handling
 │   ├── TokenStorage.swift            # Keychain token (+ email in UserDefaults); in-memory test double
 │   ├── LoginView.swift               # Sign in / create account form
+│   ├── LegacyCleanup.swift           # One-time removal of pre-accounts UserDefaults keys
 │   └── SettingsView.swift            # Signed-in account + Sign Out
 ├── HanziWriterData.bundle/           # 9,574 per-character stroke JSONs (Arphic license)
 ├── Handwriting/
@@ -296,6 +312,15 @@ Start the backend locally (see Local Development Setup), then run the `MandarinR
 ---
 
 ## Development Log
+
+### 2026-10-11 — Accounts + Server-Side Claude
+
+- **Accounts:** email/password signup/login (argon2 hashes) with opaque bearer-token sessions; `Authorization: Bearer <token>` replaces the shared `X-API-Key` on all `/api/*` routes except signup/login/logout.
+- **Per-user data:** `words`, `encounters`, and `pages` are scoped by `user_id`; every query filters on the signed-in user.
+- **Claude moved server-side:** `POST /api/ingest` now takes raw page text and the backend calls Claude Haiku with its own `ANTHROPIC_API_KEY` (25s timeout, no retries), limited to 50 captures per user per day. The `anthropic` SDK is pinned and an offline test drives the real SDK request path through a mock HTTP transport. `/api/study/plan` shares the same async client.
+- **Extension:** options page removed; the popup has a sign-in/create-account form. On install/update the worker deletes the old Claude key and backend settings from `chrome.storage.sync`.
+- **iOS:** Keychain-backed sign-in replaces the manual backend URL/key settings. A one-time cleanup on first launch removes the legacy settings and any queued pre-accounts reviews.
+- **Migration 003 wipes vocabulary:** `003_users_auth.sql` truncates `words`/`encounters`/`pages` and restarts their ids (start-fresh decision; `cedict` untouched). It refuses to run twice.
 
 ### 2026-07-02 — Laoshi-Style On-Screen Stroke Matching
 
