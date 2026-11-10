@@ -10,6 +10,7 @@ os.environ["DATABASE_URL"] = os.environ.get(
 # `if api_key:` stays off instead of making a doomed network call.
 os.environ["ANTHROPIC_API_KEY"] = ""
 
+import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 
@@ -53,3 +54,15 @@ async def db(db_schema):
     """Direct DB session for test setup/assertions."""
     async with AsyncSessionLocal() as session:
         yield session
+
+
+@pytest.fixture(autouse=True)
+def _no_starter_deck_unless_marked(request, monkeypatch):
+    """Signup seeds the HSK 1 starter deck. Most tests build their own corpus and
+    expect it to start empty, so seeding is off unless a test opts in with
+    @pytest.mark.starter_deck."""
+    if request.node.get_closest_marker("starter_deck") is None:
+        async def _skip(db, user_id):
+            return 0
+
+        monkeypatch.setattr("app.routers.auth.seed_starter_deck", _skip)
