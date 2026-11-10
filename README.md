@@ -113,6 +113,7 @@ All `/api/*` endpoints except signup, login and logout (a no-op without a token)
 | `POST` | `/api/auth/login` | Log in — body `{email, password}` → `{token, email}` |
 | `POST` | `/api/auth/logout` | Revoke the current bearer token → `204` |
 | `GET` | `/api/auth/me` | Current user → `{email}` |
+| `DELETE` | `/api/auth/me` | Permanently delete the account and all its words, encounters, pages and sessions → `204` |
 | `POST` | `/api/ingest` | Analyze page text with Claude server-side and store its vocabulary (50 captures/user/day) |
 | `GET` | `/api/queue?n=20` | Flashcard queue sorted by priority score |
 | `POST` | `/api/review/{word_id}` | Submit review result (`known`/`learning`/`ignore`) |
@@ -312,6 +313,12 @@ Start the backend locally (see Local Development Setup), then run the `MandarinR
 ---
 
 ## Development Log
+
+### 2026-11-10 — App Store Readiness
+
+- **HSK 1 starter deck:** signup seeds the 150 HSK 2.0 Level 1 words (`backend/app/data/hsk1.json`, Traditional characters, Taiwan-standard forms) at priority 0, so new accounts have a queue on day one and anything captured still outranks them. Built from the MIT-licensed [complete-hsk-vocabulary](https://github.com/drkameleon/complete-hsk-vocabulary); definitions come from CC-CEDICT. Existing accounts are not seeded. The queue now breaks priority ties by word id so the starter words come out in list order. Tests opt in to seeding with `@pytest.mark.starter_deck`.
+- **Account deletion:** `DELETE /api/auth/me` (cascades to sessions, words, encounters and pages) and a Delete Account button with confirmation in iOS Settings, per App Store Guideline 5.1.1(v).
+- **iOS:** app target is iPad-only (`TARGETED_DEVICE_FAMILY = 2`), `PrivacyInfo.xcprivacy` declares the UserDefaults required-reason API (CA92.1) and the collected data (email, user ID, user content, app functionality only, not tracking), and Settings credits CC-CEDICT and the HSK list alongside Arphic.
 
 ### 2026-10-11 — Accounts + Server-Side Claude
 

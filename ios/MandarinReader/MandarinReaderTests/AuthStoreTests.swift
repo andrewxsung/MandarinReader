@@ -140,4 +140,41 @@ final class AuthStoreTests: XCTestCase {
         XCTAssertNil(storage.load())
         await fulfillment(of: [logoutSent], timeout: 2)
     }
+
+    func test_deleteAccountClearsStateOnSuccess() async throws {
+        URLProtocolMock.handler = { request in
+            XCTAssertEqual(request.httpMethod, "DELETE")
+            XCTAssertEqual(request.url?.path, "/api/auth/me")
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 204, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+        let storage = InMemoryTokenStorage(token: "tok123", email: "a@x.com")
+        let store = AuthStore(storage: storage, urlSession: mockedSession())
+
+        try await store.deleteAccount()
+
+        XCTAssertFalse(store.isSignedIn)
+        XCTAssertNil(store.email)
+        XCTAssertNil(storage.load())
+    }
+
+    func test_deleteAccountFailureKeepsSession() async {
+        URLProtocolMock.handler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+        let storage = InMemoryTokenStorage(token: "tok123", email: "a@x.com")
+        let store = AuthStore(storage: storage, urlSession: mockedSession())
+
+        do {
+            try await store.deleteAccount()
+            XCTFail("expected httpError")
+        } catch {
+            XCTAssertEqual(error as? APIError, .httpError(status: 500))
+        }
+        XCTAssertTrue(store.isSignedIn)
+        XCTAssertEqual(storage.load()?.token, "tok123")
+    }
 }

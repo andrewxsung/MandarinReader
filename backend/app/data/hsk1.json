@@ -1,0 +1,905 @@
+{
+ "source": "HSK 2.0 Level 1 (150 words), from github.com/drkameleon/complete-hsk-vocabulary (MIT); definitions from CC-CEDICT (CC BY-SA) via that dataset",
+ "words": [
+  {
+   "simplified": "爱",
+   "traditional": "愛",
+   "pinyin": "ai4",
+   "definition": "to love; to be fond of; to like; affection; to be inclined (to do sth); to tend to (happen)"
+  },
+  {
+   "simplified": "八",
+   "traditional": "八",
+   "pinyin": "ba1",
+   "definition": "eight; 8"
+  },
+  {
+   "simplified": "爸爸",
+   "traditional": "爸爸",
+   "pinyin": "ba4 ba5",
+   "definition": "(coll.) father; dad"
+  },
+  {
+   "simplified": "杯子",
+   "traditional": "杯子",
+   "pinyin": "bei1 zi5",
+   "definition": "cup; glass"
+  },
+  {
+   "simplified": "北京",
+   "traditional": "北京",
+   "pinyin": "Bei3 jing1",
+   "definition": "Beijing, capital of the People's Republic of China"
+  },
+  {
+   "simplified": "本",
+   "traditional": "本",
+   "pinyin": "ben3",
+   "definition": "root; stem; origin"
+  },
+  {
+   "simplified": "不",
+   "traditional": "不",
+   "pinyin": "bu4",
+   "definition": "no; not so; (bound form) not; un-"
+  },
+  {
+   "simplified": "不客气",
+   "traditional": "不客氣",
+   "pinyin": "bu4 ke4 qi5",
+   "definition": "you're welcome; don't mention it; impolite"
+  },
+  {
+   "simplified": "菜",
+   "traditional": "菜",
+   "pinyin": "cai4",
+   "definition": "dish (type of food); vegetable; cuisine"
+  },
+  {
+   "simplified": "茶",
+   "traditional": "茶",
+   "pinyin": "cha2",
+   "definition": "tea; tea plant"
+  },
+  {
+   "simplified": "吃",
+   "traditional": "吃",
+   "pinyin": "chi1",
+   "definition": "to eat; to consume; to eat at (a cafeteria etc); to eradicate; to destroy"
+  },
+  {
+   "simplified": "出租车",
+   "traditional": "出租車",
+   "pinyin": "chu1 zu1 che1",
+   "definition": "taxi; (Tw) rental car"
+  },
+  {
+   "simplified": "打电话",
+   "traditional": "打電話",
+   "pinyin": "da3 dian4 hua4",
+   "definition": "to make a telephone call"
+  },
+  {
+   "simplified": "大",
+   "traditional": "大",
+   "pinyin": "da4",
+   "definition": "big; large; great; older (than another person); eldest (as in 姐)"
+  },
+  {
+   "simplified": "的",
+   "traditional": "的",
+   "pinyin": "de5",
+   "definition": "of; ~'s (possessive particle); (used after an attribute); (used to form a nominal expression)"
+  },
+  {
+   "simplified": "点",
+   "traditional": "點",
+   "pinyin": "dian3",
+   "definition": "point; dot; drop"
+  },
+  {
+   "simplified": "电脑",
+   "traditional": "電腦",
+   "pinyin": "dian4 nao3",
+   "definition": "computer"
+  },
+  {
+   "simplified": "电视",
+   "traditional": "電視",
+   "pinyin": "dian4 shi4",
+   "definition": "television; TV"
+  },
+  {
+   "simplified": "电影",
+   "traditional": "電影",
+   "pinyin": "dian4 ying3",
+   "definition": "movie; film"
+  },
+  {
+   "simplified": "东西",
+   "traditional": "東西",
+   "pinyin": "dong1 xi5",
+   "definition": "thing; stuff; person"
+  },
+  {
+   "simplified": "都",
+   "traditional": "都",
+   "pinyin": "dou1",
+   "definition": "all; both; entirely; (used for emphasis) even; already"
+  },
+  {
+   "simplified": "读",
+   "traditional": "讀",
+   "pinyin": "du2",
+   "definition": "to read out; to read aloud; to read; to attend (school); to study (a subject in school)"
+  },
+  {
+   "simplified": "对不起",
+   "traditional": "對不起",
+   "pinyin": "dui4 bu5 qi3",
+   "definition": "I'm sorry; excuse me; I beg your pardon; to let (sb) down; to disappoint"
+  },
+  {
+   "simplified": "多",
+   "traditional": "多",
+   "pinyin": "duo1",
+   "definition": "many; much; too many; in excess; (after a numeral) ... odd"
+  },
+  {
+   "simplified": "多少",
+   "traditional": "多少",
+   "pinyin": "duo1 shao5",
+   "definition": "how much?; how many?; (phone number, student ID etc) what number?"
+  },
+  {
+   "simplified": "儿子",
+   "traditional": "兒子",
+   "pinyin": "er2 zi5",
+   "definition": "son"
+  },
+  {
+   "simplified": "二",
+   "traditional": "二",
+   "pinyin": "er4",
+   "definition": "two; 2; (Beijing dialect) stupid"
+  },
+  {
+   "simplified": "饭馆",
+   "traditional": "飯館",
+   "pinyin": "fan4 guan3",
+   "definition": "restaurant"
+  },
+  {
+   "simplified": "飞机",
+   "traditional": "飛機",
+   "pinyin": "fei1 ji1",
+   "definition": "airplane"
+  },
+  {
+   "simplified": "分钟",
+   "traditional": "分鐘",
+   "pinyin": "fen1 zhong1",
+   "definition": "minute"
+  },
+  {
+   "simplified": "高兴",
+   "traditional": "高興",
+   "pinyin": "gao1 xing4",
+   "definition": "happy; glad; willing (to do sth)"
+  },
+  {
+   "simplified": "个",
+   "traditional": "個",
+   "pinyin": "ge4",
+   "definition": "(classifier used before a noun that has no specific classifier); (bound form) individual"
+  },
+  {
+   "simplified": "工作",
+   "traditional": "工作",
+   "pinyin": "gong1 zuo4",
+   "definition": "to work; (of a machine) to operate; job"
+  },
+  {
+   "simplified": "狗",
+   "traditional": "狗",
+   "pinyin": "gou3",
+   "definition": "dog"
+  },
+  {
+   "simplified": "汉语",
+   "traditional": "漢語",
+   "pinyin": "Han4 yu3",
+   "definition": "Chinese language"
+  },
+  {
+   "simplified": "好",
+   "traditional": "好",
+   "pinyin": "hao3",
+   "definition": "good; appropriate; proper; all right!"
+  },
+  {
+   "simplified": "喝",
+   "traditional": "喝",
+   "pinyin": "he1",
+   "definition": "to drink; variant of 嗬"
+  },
+  {
+   "simplified": "和",
+   "traditional": "和",
+   "pinyin": "he2",
+   "definition": "(joining two nouns) and; together with; with (Taiwan pr. [hàn]); (math.) sum; to make peace"
+  },
+  {
+   "simplified": "很",
+   "traditional": "很",
+   "pinyin": "hen3",
+   "definition": "(adverb of degree); quite; very"
+  },
+  {
+   "simplified": "后面",
+   "traditional": "後面",
+   "pinyin": "hou4 mian5",
+   "definition": "the back; the rear; the last bit; behind; near the end; at the back; later; afterwards"
+  },
+  {
+   "simplified": "回",
+   "traditional": "回",
+   "pinyin": "hui2",
+   "definition": "to circle; to go back; to turn around"
+  },
+  {
+   "simplified": "会",
+   "traditional": "會",
+   "pinyin": "hui4",
+   "definition": "can; to have the skill; to know how to; to be likely to; to be sure to; to meet; to get together"
+  },
+  {
+   "simplified": "火车站",
+   "traditional": "火車站",
+   "pinyin": "huo3 che1 zhan4",
+   "definition": "train station"
+  },
+  {
+   "simplified": "几",
+   "traditional": "幾",
+   "pinyin": "ji3",
+   "definition": "how much; how many; several"
+  },
+  {
+   "simplified": "家",
+   "traditional": "家",
+   "pinyin": "jia1",
+   "definition": "home; family; (polite) my (sister, uncle etc)"
+  },
+  {
+   "simplified": "叫",
+   "traditional": "叫",
+   "pinyin": "jiao4",
+   "definition": "to shout; to call; to order"
+  },
+  {
+   "simplified": "今天",
+   "traditional": "今天",
+   "pinyin": "jin1 tian1",
+   "definition": "today; at the present; now"
+  },
+  {
+   "simplified": "九",
+   "traditional": "九",
+   "pinyin": "jiu3",
+   "definition": "nine; 9"
+  },
+  {
+   "simplified": "开",
+   "traditional": "開",
+   "pinyin": "kai1",
+   "definition": "to open (transitive or intransitive); (of ships, vehicles, troops etc) to start; to turn on; to put in operation; to operate; to run"
+  },
+  {
+   "simplified": "看",
+   "traditional": "看",
+   "pinyin": "kan4",
+   "definition": "to see; to look at; to read; to watch"
+  },
+  {
+   "simplified": "看见",
+   "traditional": "看見",
+   "pinyin": "kan4 jian4",
+   "definition": "to see; to catch sight of"
+  },
+  {
+   "simplified": "块",
+   "traditional": "塊",
+   "pinyin": "kuai4",
+   "definition": "lump; chunk; piece; classifier for pieces of cloth, cake, soap etc; (coll.) classifier for money and currency units"
+  },
+  {
+   "simplified": "来",
+   "traditional": "來",
+   "pinyin": "lai2",
+   "definition": "to come; (used as a substitute for a more specific verb); hither (directional complement for motion toward the speaker, as in 回来)"
+  },
+  {
+   "simplified": "老师",
+   "traditional": "老師",
+   "pinyin": "lao3 shi1",
+   "definition": "teacher"
+  },
+  {
+   "simplified": "了",
+   "traditional": "了",
+   "pinyin": "le5",
+   "definition": "(completed action marker); (modal particle indicating change of state, situation now); (modal particle intensifying preceding clause)"
+  },
+  {
+   "simplified": "冷",
+   "traditional": "冷",
+   "pinyin": "leng3",
+   "definition": "cold"
+  },
+  {
+   "simplified": "里",
+   "traditional": "裡",
+   "pinyin": "li3",
+   "definition": "lining; interior; inside"
+  },
+  {
+   "simplified": "零",
+   "traditional": "零",
+   "pinyin": "ling2",
+   "definition": "zero; nought; zero sign"
+  },
+  {
+   "simplified": "六",
+   "traditional": "六",
+   "pinyin": "liu4",
+   "definition": "six; 6"
+  },
+  {
+   "simplified": "妈妈",
+   "traditional": "媽媽",
+   "pinyin": "ma1 ma5",
+   "definition": "mama; mommy; mother"
+  },
+  {
+   "simplified": "吗",
+   "traditional": "嗎",
+   "pinyin": "ma5",
+   "definition": "(question particle for \"yes-no\" questions)"
+  },
+  {
+   "simplified": "买",
+   "traditional": "買",
+   "pinyin": "mai3",
+   "definition": "to buy; to purchase"
+  },
+  {
+   "simplified": "猫",
+   "traditional": "貓",
+   "pinyin": "mao1",
+   "definition": "cat; (dialect) to hide oneself; (coll.) modem"
+  },
+  {
+   "simplified": "没",
+   "traditional": "沒",
+   "pinyin": "mei2",
+   "definition": "(negative prefix for verbs) have not; not"
+  },
+  {
+   "simplified": "没关系",
+   "traditional": "沒關係",
+   "pinyin": "mei2 guan1 xi5",
+   "definition": "it doesn't matter"
+  },
+  {
+   "simplified": "米饭",
+   "traditional": "米飯",
+   "pinyin": "mi3 fan4",
+   "definition": "(cooked) rice"
+  },
+  {
+   "simplified": "名字",
+   "traditional": "名字",
+   "pinyin": "ming2 zi5",
+   "definition": "name (of a person or thing)"
+  },
+  {
+   "simplified": "明天",
+   "traditional": "明天",
+   "pinyin": "ming2 tian1",
+   "definition": "tomorrow"
+  },
+  {
+   "simplified": "哪",
+   "traditional": "哪",
+   "pinyin": "na3",
+   "definition": "how; which"
+  },
+  {
+   "simplified": "那",
+   "traditional": "那",
+   "pinyin": "na4",
+   "definition": "(specifier) that; the; those (colloquial pr. [nèi]); (pronoun) that (referring to persons, things or situations); then (in that case)"
+  },
+  {
+   "simplified": "呢",
+   "traditional": "呢",
+   "pinyin": "ne5",
+   "definition": "particle indicating that a previously asked question is to be applied to the preceding word (\"What about ...?\", \"And ...?\"); particle for inquiring about location (\"Where is ...?\"); particle signaling a pause, to emphasize the preceding words and allow the listener time to take them on board (\"ok?\", \"are you with me?\")"
+  },
+  {
+   "simplified": "能",
+   "traditional": "能",
+   "pinyin": "neng2",
+   "definition": "can; to be able to; might possibly"
+  },
+  {
+   "simplified": "你",
+   "traditional": "你",
+   "pinyin": "ni3",
+   "definition": "you (informal, as opposed to courteous 您)"
+  },
+  {
+   "simplified": "年",
+   "traditional": "年",
+   "pinyin": "nian2",
+   "definition": "year"
+  },
+  {
+   "simplified": "女儿",
+   "traditional": "女兒",
+   "pinyin": "nü3 er2",
+   "definition": "daughter"
+  },
+  {
+   "simplified": "朋友",
+   "traditional": "朋友",
+   "pinyin": "peng2 you5",
+   "definition": "friend"
+  },
+  {
+   "simplified": "漂亮",
+   "traditional": "漂亮",
+   "pinyin": "piao4 liang5",
+   "definition": "pretty; beautiful"
+  },
+  {
+   "simplified": "苹果",
+   "traditional": "蘋果",
+   "pinyin": "ping2 guo3",
+   "definition": "apple"
+  },
+  {
+   "simplified": "七",
+   "traditional": "七",
+   "pinyin": "qi1",
+   "definition": "seven; 7"
+  },
+  {
+   "simplified": "前面",
+   "traditional": "前面",
+   "pinyin": "qian2 mian4",
+   "definition": "ahead; in front; preceding"
+  },
+  {
+   "simplified": "钱",
+   "traditional": "錢",
+   "pinyin": "qian2",
+   "definition": "coin; money; unit of weight, one tenth of a tael 两"
+  },
+  {
+   "simplified": "请",
+   "traditional": "請",
+   "pinyin": "qing3",
+   "definition": "to ask; to invite; please (do sth)"
+  },
+  {
+   "simplified": "去",
+   "traditional": "去",
+   "pinyin": "qu4",
+   "definition": "to go; to go to (a place); (of a time etc) last"
+  },
+  {
+   "simplified": "热",
+   "traditional": "熱",
+   "pinyin": "re4",
+   "definition": "to warm up; to heat up; hot (of weather)"
+  },
+  {
+   "simplified": "人",
+   "traditional": "人",
+   "pinyin": "ren2",
+   "definition": "person; people"
+  },
+  {
+   "simplified": "认识",
+   "traditional": "認識",
+   "pinyin": "ren4 shi5",
+   "definition": "to know; to recognize; to be familiar with"
+  },
+  {
+   "simplified": "日",
+   "traditional": "日",
+   "pinyin": "ri4",
+   "definition": "sun; day; date, day of the month"
+  },
+  {
+   "simplified": "三",
+   "traditional": "三",
+   "pinyin": "san1",
+   "definition": "three; 3"
+  },
+  {
+   "simplified": "商店",
+   "traditional": "商店",
+   "pinyin": "shang1 dian4",
+   "definition": "store; shop"
+  },
+  {
+   "simplified": "上",
+   "traditional": "上",
+   "pinyin": "shang4",
+   "definition": "(bound form) up; upper; above; previous; first (of multiple parts); to climb; to get onto; to go up"
+  },
+  {
+   "simplified": "上午",
+   "traditional": "上午",
+   "pinyin": "shang4 wu3",
+   "definition": "morning"
+  },
+  {
+   "simplified": "少",
+   "traditional": "少",
+   "pinyin": "shao3",
+   "definition": "few; less; to lack"
+  },
+  {
+   "simplified": "什么",
+   "traditional": "什麼",
+   "pinyin": "shen2 me5",
+   "definition": "what?; something; anything"
+  },
+  {
+   "simplified": "十",
+   "traditional": "十",
+   "pinyin": "shi2",
+   "definition": "ten; 10"
+  },
+  {
+   "simplified": "时候",
+   "traditional": "時候",
+   "pinyin": "shi2 hou5",
+   "definition": "time; length of time; moment"
+  },
+  {
+   "simplified": "是",
+   "traditional": "是",
+   "pinyin": "shi4",
+   "definition": "to be (followed by substantives only); correct; right; true; (respectful acknowledgement of a command) very well"
+  },
+  {
+   "simplified": "书",
+   "traditional": "書",
+   "pinyin": "shu1",
+   "definition": "book; letter; document"
+  },
+  {
+   "simplified": "谁",
+   "traditional": "誰",
+   "pinyin": "shei2",
+   "definition": "who; also pr. [shuí]"
+  },
+  {
+   "simplified": "水",
+   "traditional": "水",
+   "pinyin": "shui3",
+   "definition": "water; river; liquid"
+  },
+  {
+   "simplified": "水果",
+   "traditional": "水果",
+   "pinyin": "shui3 guo3",
+   "definition": "fruit"
+  },
+  {
+   "simplified": "睡觉",
+   "traditional": "睡覺",
+   "pinyin": "shui4 jiao4",
+   "definition": "to go to bed; to sleep"
+  },
+  {
+   "simplified": "说话",
+   "traditional": "說話",
+   "pinyin": "shuo1 hua4",
+   "definition": "to speak; to say; to talk"
+  },
+  {
+   "simplified": "四",
+   "traditional": "四",
+   "pinyin": "si4",
+   "definition": "four; 4"
+  },
+  {
+   "simplified": "岁",
+   "traditional": "歲",
+   "pinyin": "sui4",
+   "definition": "classifier for years (of age); year; year (of crop harvests)"
+  },
+  {
+   "simplified": "他",
+   "traditional": "他",
+   "pinyin": "ta1",
+   "definition": "he; him (used for either sex when the sex is unknown or unimportant); (used before sb's name for emphasis); (used as a meaningless mock object)"
+  },
+  {
+   "simplified": "她",
+   "traditional": "她",
+   "pinyin": "ta1",
+   "definition": "she"
+  },
+  {
+   "simplified": "太",
+   "traditional": "太",
+   "pinyin": "tai4",
+   "definition": "highest; greatest; too (much)"
+  },
+  {
+   "simplified": "天气",
+   "traditional": "天氣",
+   "pinyin": "tian1 qi4",
+   "definition": "weather"
+  },
+  {
+   "simplified": "听",
+   "traditional": "聽",
+   "pinyin": "ting1",
+   "definition": "to listen to; to hear; to heed; to obey; a can (loanword from English \"tin\")"
+  },
+  {
+   "simplified": "同学",
+   "traditional": "同學",
+   "pinyin": "tong2 xue2",
+   "definition": "to study at the same school; fellow student; classmate"
+  },
+  {
+   "simplified": "喂",
+   "traditional": "喂",
+   "pinyin": "wei2",
+   "definition": "hello (when answering the phone)"
+  },
+  {
+   "simplified": "我",
+   "traditional": "我",
+   "pinyin": "wo3",
+   "definition": "I; me; my"
+  },
+  {
+   "simplified": "我们",
+   "traditional": "我們",
+   "pinyin": "wo3 men5",
+   "definition": "we; us; ourselves"
+  },
+  {
+   "simplified": "五",
+   "traditional": "五",
+   "pinyin": "wu3",
+   "definition": "five; 5"
+  },
+  {
+   "simplified": "喜欢",
+   "traditional": "喜歡",
+   "pinyin": "xi3 huan5",
+   "definition": "to like; to be fond of"
+  },
+  {
+   "simplified": "下",
+   "traditional": "下",
+   "pinyin": "xia4",
+   "definition": "down; downwards; below"
+  },
+  {
+   "simplified": "下午",
+   "traditional": "下午",
+   "pinyin": "xia4 wu3",
+   "definition": "afternoon; p.m."
+  },
+  {
+   "simplified": "下雨",
+   "traditional": "下雨",
+   "pinyin": "xia4 yu3",
+   "definition": "to rain"
+  },
+  {
+   "simplified": "先生",
+   "traditional": "先生",
+   "pinyin": "xian1 sheng5",
+   "definition": "teacher; gentleman; sir; mister (Mr.); husband"
+  },
+  {
+   "simplified": "现在",
+   "traditional": "現在",
+   "pinyin": "xian4 zai4",
+   "definition": "now; at present; at the moment"
+  },
+  {
+   "simplified": "想",
+   "traditional": "想",
+   "pinyin": "xiang3",
+   "definition": "to think (about); to think of; to devise; to think (that); to believe (that)"
+  },
+  {
+   "simplified": "小",
+   "traditional": "小",
+   "pinyin": "xiao3",
+   "definition": "small; tiny; few"
+  },
+  {
+   "simplified": "小姐",
+   "traditional": "小姐",
+   "pinyin": "xiao3 jie5",
+   "definition": "young lady; miss; (slang) prostitute"
+  },
+  {
+   "simplified": "些",
+   "traditional": "些",
+   "pinyin": "xie1",
+   "definition": "classifier indicating a small amount or small number greater than 1: some, a few, several"
+  },
+  {
+   "simplified": "写",
+   "traditional": "寫",
+   "pinyin": "xie3",
+   "definition": "to write"
+  },
+  {
+   "simplified": "谢谢",
+   "traditional": "謝謝",
+   "pinyin": "xie4 xie5",
+   "definition": "to thank; thanks; thank you"
+  },
+  {
+   "simplified": "星期",
+   "traditional": "星期",
+   "pinyin": "xing1 qi1",
+   "definition": "week; day of the week; Sunday"
+  },
+  {
+   "simplified": "学生",
+   "traditional": "學生",
+   "pinyin": "xue2 sheng5",
+   "definition": "student; schoolchild"
+  },
+  {
+   "simplified": "学习",
+   "traditional": "學習",
+   "pinyin": "xue2 xi2",
+   "definition": "to learn; to study"
+  },
+  {
+   "simplified": "学校",
+   "traditional": "學校",
+   "pinyin": "xue2 xiao4",
+   "definition": "school"
+  },
+  {
+   "simplified": "一",
+   "traditional": "一",
+   "pinyin": "yi1",
+   "definition": "one; single; a (article)"
+  },
+  {
+   "simplified": "衣服",
+   "traditional": "衣服",
+   "pinyin": "yi1 fu5",
+   "definition": "clothes"
+  },
+  {
+   "simplified": "医生",
+   "traditional": "醫生",
+   "pinyin": "yi1 sheng1",
+   "definition": "doctor"
+  },
+  {
+   "simplified": "医院",
+   "traditional": "醫院",
+   "pinyin": "yi1 yuan4",
+   "definition": "hospital"
+  },
+  {
+   "simplified": "椅子",
+   "traditional": "椅子",
+   "pinyin": "yi3 zi5",
+   "definition": "chair"
+  },
+  {
+   "simplified": "有",
+   "traditional": "有",
+   "pinyin": "you3",
+   "definition": "to have; there is; (bound form) having; with; -ful; -ed; -al (as in 意 intentional)"
+  },
+  {
+   "simplified": "月",
+   "traditional": "月",
+   "pinyin": "yue4",
+   "definition": "moon; month; monthly"
+  },
+  {
+   "simplified": "再见",
+   "traditional": "再見",
+   "pinyin": "zai4 jian4",
+   "definition": "goodbye; see you again later"
+  },
+  {
+   "simplified": "在",
+   "traditional": "在",
+   "pinyin": "zai4",
+   "definition": "to exist; to be alive; (of sb or sth) to be (located) at; (used before a verb to indicate an action in progress)"
+  },
+  {
+   "simplified": "怎么",
+   "traditional": "怎麼",
+   "pinyin": "zen3 me5",
+   "definition": "how?; what?; why?"
+  },
+  {
+   "simplified": "怎么样",
+   "traditional": "怎麼樣",
+   "pinyin": "zen3 me5 yang4",
+   "definition": "how?; how about?; how was it?"
+  },
+  {
+   "simplified": "这",
+   "traditional": "這",
+   "pinyin": "zhe4",
+   "definition": "(pronoun) this; these; (bound form) this; the (followed by a noun); (bound form) this; these (followed by a classifier) (in this sense, commonly pr. [zhèi], esp. in Beijing)"
+  },
+  {
+   "simplified": "中国",
+   "traditional": "中國",
+   "pinyin": "Zhong1 guo2",
+   "definition": "China"
+  },
+  {
+   "simplified": "中午",
+   "traditional": "中午",
+   "pinyin": "zhong1 wu3",
+   "definition": "noon; midday"
+  },
+  {
+   "simplified": "住",
+   "traditional": "住",
+   "pinyin": "zhu4",
+   "definition": "to live; to dwell; to stay"
+  },
+  {
+   "simplified": "桌子",
+   "traditional": "桌子",
+   "pinyin": "zhuo1 zi5",
+   "definition": "table; desk"
+  },
+  {
+   "simplified": "字",
+   "traditional": "字",
+   "pinyin": "zi4",
+   "definition": "letter; symbol; character"
+  },
+  {
+   "simplified": "昨天",
+   "traditional": "昨天",
+   "pinyin": "zuo2 tian1",
+   "definition": "yesterday"
+  },
+  {
+   "simplified": "坐",
+   "traditional": "坐",
+   "pinyin": "zuo4",
+   "definition": "to sit; to take a seat; to take (a bus, airplane etc)"
+  },
+  {
+   "simplified": "做",
+   "traditional": "做",
+   "pinyin": "zuo4",
+   "definition": "to make; to produce; to write; to compose; to do; to engage in; to hold (a party etc)"
+  }
+ ]
+}

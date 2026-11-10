@@ -111,6 +111,15 @@ extension APIClient {
         try Self.validate(response)
     }
 
+    /// `DELETE /api/auth/me` — permanently deletes the account and all its
+    /// words, pages and review history (204). Required by App Store
+    /// Guideline 5.1.1(v) for apps that let people create an account.
+    func deleteAccount() async throws {
+        let request = authorizedRequest(path: "api/auth/me", method: "DELETE")
+        let (_, response) = try await session.data(for: request)
+        try Self.validate(response)
+    }
+
     private func authCall(path: String, email: String, password: String) async throws -> AuthResponse {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"

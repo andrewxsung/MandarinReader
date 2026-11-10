@@ -53,6 +53,16 @@ final class AuthStore: ObservableObject {
         clear()
     }
 
+    /// Deletes the account on the server, then clears the local session.
+    /// On failure nothing local changes, so the user can retry.
+    func deleteAccount() async throws {
+        let client = makeAPIClient()
+        try await client.deleteAccount()
+        // Only clear if no other sign-in happened while the request was in flight.
+        guard client.token == token else { return }
+        clear()
+    }
+
     /// Call when any API request returns 401 — the session was revoked or expired.
     /// Pass the `token` of the APIClient that made the failing request: a slow
     /// request sent with an old token can come back 401 after the user has

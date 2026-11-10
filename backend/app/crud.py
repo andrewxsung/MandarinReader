@@ -136,7 +136,9 @@ async def get_queue(db: AsyncSession, user_id: int, n: int = 20) -> list[tuple[W
                 Word.next_review_date <= today,
             ),
         )
-        .order_by(Word.priority_score.desc())
+        # id tiebreak: equal scores (e.g. the unseen HSK 1 starter words) come
+        # back in a stable order instead of whatever Postgres picks.
+        .order_by(Word.priority_score.desc(), Word.id)
         .limit(n)
     )
     words = result.scalars().all()

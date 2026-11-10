@@ -1,3 +1,4 @@
+import pytest
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, update
@@ -137,3 +138,51 @@ async def test_login_purges_own_expired_sessions_and_sets_last_used(client, db):
     assert new.expires_at > datetime.now(timezone.utc)
     assert new.user_id != old.user_id
     assert new.last_used_at is not None
+
+
+@pytest.mark.starter_deck
+async def test_delete_account_removes_user_and_all_their_data(client, db):
+    from sqlalchemy import func
+
+    from app.models import Encounter, Page, User, Word
+
+    signup = await client.post("/api/auth/signup", json=SIGNUP)
+    headers = {"Authorization": f"Bearer {signup.json()['token']}"}
+    user_id = await db.scalar(select(User.id).where(User.email == SIGNUP["email"]))
+    word_id = await db.scalar(select(Word.id).where(Word.user_id == user_id).limit(1))
+    db.add(Encounter(word_id=word_id, source_type="manual_paste", context_sentence="我愛你",
+                     encountered_at=datetime.now(timezone.utc)))
+    db.add(Page(user_id=user_id, url="https://example.com", captured_at=datetime.now(timezone.utc)))
+    await db.commit()
+
+    other = await client.post("/api/auth/signup", json={"email": "other@example.com", "password": "password123"})
+    other_headers = {"Authorization": f"Bearer {other.json()['token']}"}
+
+    resp = await client.delete("/api/auth/me", headers=headers)
+    assert resp.status_code == 204
+
+    db.expire_all()
+    assert await db.scalar(select(func.count()).select_from(User).where(User.id == user_id)) == 0
+    assert await db.scalar(select(func.count()).select_from(Word).where(Word.user_id == user_id)) == 0
+    assert await db.scalar(select(func.count()).select_from(Page).where(Page.user_id == user_id)) == 0
+    assert await db.scalar(select(func.count()).select_from(Encounter).where(Encounter.word_id == word_id)) == 0
+    assert await db.scalar(select(func.count()).select_from(AuthSession).where(AuthSession.user_id == user_id)) == 0
+
+    # The old token no longer works, the email can sign up again, and other users are untouched.
+    assert (await client.get("/api/auth/me", headers=headers)).status_code == 401
+    assert (await client.post("/api/auth/signup", json=SIGNUP)).status_code == 201
+    assert (await client.get("/api/auth/me", headers=other_headers)).status_code == 200
+
+
+async def test_delete_account_requires_auth(client):
+    assert (await client.delete("/api/auth/me")).status_code == 401
+
+
+async def test_signup_without_marker_skips_seed(client, db):
+    """Guard for the conftest opt-out: unmarked tests start with an empty corpus."""
+    from sqlalchemy import func
+
+    from app.models import Word
+
+    await client.post("/api/auth/signup", json=SIGNUP)
+    assert await db.scalar(select(func.count()).select_from(Word)) == 0
