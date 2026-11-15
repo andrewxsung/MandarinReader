@@ -250,6 +250,28 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer tok123")
     }
 
+    func test_deleteAccount_sendsDeleteWithBearerToken() async throws {
+        URLProtocolMock.handler = Self.respond(204)
+
+        try await client.deleteAccount()
+
+        let request = URLProtocolMock.capturedRequests[0]
+        XCTAssertEqual(request.url?.path, "/api/auth/me")
+        XCTAssertEqual(request.httpMethod, "DELETE")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer tok123")
+    }
+
+    func test_deleteAccount_throwsOnServerError() async {
+        URLProtocolMock.handler = Self.respond(500)
+
+        do {
+            try await client.deleteAccount()
+            XCTFail("expected httpError")
+        } catch {
+            XCTAssertEqual(error as? APIError, .httpError(status: 500))
+        }
+    }
+
     // MARK: - helpers
 
     private static func body(of request: URLRequest) -> Data {

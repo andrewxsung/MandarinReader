@@ -113,6 +113,7 @@ All `/api/*` endpoints except signup, login and logout (a no-op without a token)
 | `POST` | `/api/auth/login` | Log in — body `{email, password}` → `{token, email}` |
 | `POST` | `/api/auth/logout` | Revoke the current bearer token → `204` |
 | `GET` | `/api/auth/me` | Current user → `{email}` |
+| `DELETE` | `/api/auth/me` | Permanently delete the account and all its words, encounters, pages and sessions → `204` |
 | `POST` | `/api/ingest` | Analyze page text with Claude server-side and store its vocabulary (50 captures/user/day) |
 | `GET` | `/api/queue?n=20` | Flashcard queue sorted by priority score |
 | `POST` | `/api/review/{word_id}` | Submit review result (`known`/`learning`/`ignore`) |
@@ -254,7 +255,7 @@ Replaced freehand canvas drawing with animated stroke-order playback using `hanz
 
 ## iPadOS App
 
-Native SwiftUI app for iPad (iPadOS 16.6+) that pulls from the priority queue and runs flash-then-recall handwriting practice sessions.
+Native SwiftUI app, iPhone-first and universal (iOS/iPadOS 16.6+; portrait-only on iPhone), that pulls from the priority queue and runs flash-then-recall handwriting practice sessions.
 
 ### Flow
 1. **Sign in** — on launch, `LoginView` asks for email + password (or creates an account) until the user is signed in; the bearer token is stored in the Keychain, so later launches go straight to Start Session
@@ -301,6 +302,9 @@ ios/MandarinReader/MandarinReader/
 ### Running in the Simulator
 Start the backend locally (see Local Development Setup), then run the `MandarinReader` scheme on a simulator — the Debug build talks to `http://localhost:8000`. Sign in or create an account on the login screen.
 
+### App Store Screenshots
+Start the backend locally, then run `ios/MandarinReader/scripts/take_screenshots.sh`. It runs `AppStoreScreenshotTests` on an iPhone 17 Pro Max and an iPad Pro 13-inch (M5) simulator (override with `IPHONE_SIM` / `IPAD_SIM`), signs up a fresh account each run, and saves the start screen, Settings, a flash card and the handwriting canvas to `ios/MandarinReader/screenshots/` (git-ignored).
+
 ### Running on Device
 1. Open `ios/MandarinReader/MandarinReader.xcodeproj` in Xcode
 2. Signing & Capabilities → select your team, set a unique bundle ID
@@ -312,6 +316,12 @@ Start the backend locally (see Local Development Setup), then run the `MandarinR
 ---
 
 ## Development Log
+
+### 2026-11-10 — App Store Readiness
+
+- **HSK 1 starter deck:** signup seeds the 150 HSK 2.0 Level 1 words (`backend/app/data/hsk1.json`, Traditional characters, Taiwan-standard forms) at priority 0, so new accounts have a queue on day one and anything captured still outranks them. Built from the MIT-licensed [complete-hsk-vocabulary](https://github.com/drkameleon/complete-hsk-vocabulary); definitions come from CC-CEDICT. Existing accounts are not seeded. The queue now breaks priority ties by word id so the starter words come out in list order. Tests opt in to seeding with `@pytest.mark.starter_deck`.
+- **Account deletion:** `DELETE /api/auth/me` (cascades to sessions, words, encounters and pages) and a Delete Account button with confirmation in iOS Settings, per App Store Guideline 5.1.1(v).
+- **iOS:** `PrivacyInfo.xcprivacy` declares the UserDefaults required-reason API (CA92.1) and the collected data (email, user ID, user content, app functionality only, not tracking), and Settings credits CC-CEDICT and the HSK list alongside Arphic.
 
 ### 2026-10-11 — Accounts + Server-Side Claude
 

@@ -20,6 +20,13 @@ final class AuthStore: ObservableObject {
         let storage = storage ?? KeychainTokenStorage()
         self.storage = storage
         self.urlSession = urlSession
+        #if DEBUG
+        // AppStoreScreenshotTests launches with this flag so every run starts
+        // signed out (the Keychain token otherwise survives between runs).
+        if ProcessInfo.processInfo.arguments.contains("-resetAuthForUITests") {
+            storage.clear()
+        }
+        #endif
         let saved = storage.load()
         self.token = saved?.token
         // The Keychain token survives app deletion but the UserDefaults email
@@ -50,6 +57,16 @@ final class AuthStore: ObservableObject {
         // state, so the best-effort server-side revocation sends the old token.
         let client = makeAPIClient()
         Task { try? await client.logout() }
+        clear()
+    }
+
+    /// Deletes the account on the server, then clears the local session.
+    /// On failure nothing local changes, so the user can retry.
+    func deleteAccount() async throws {
+        let client = makeAPIClient()
+        try await client.deleteAccount()
+        // Only clear if no other sign-in happened while the request was in flight.
+        guard client.token == token else { return }
         clear()
     }
 

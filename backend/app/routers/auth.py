@@ -12,6 +12,7 @@ from ..database import get_db
 from ..models import AuthSession, User
 from ..schemas import AuthResponse, CredentialsRequest, MeResponse
 from ..services.security import hash_password, hash_token, new_token, verify_password
+from ..services.starter_deck import seed_starter_deck
 
 router = APIRouter()
 
@@ -58,6 +59,8 @@ async def signup(payload: CredentialsRequest, db: AsyncSession = Depends(get_db)
         await db.rollback()
         raise HTTPException(status_code=409, detail="An account with this email already exists")
 
+    # New accounts start with the HSK 1 words so the queue is never empty.
+    await seed_starter_deck(db, user.id)
     token = await _open_session(db, user.id)
     await db.commit()
     return AuthResponse(token=token, email=email)
@@ -93,3 +96,17 @@ async def logout(
 @router.get("/auth/me", response_model=MeResponse)
 async def me(user: User = Depends(get_current_user)):
     return MeResponse(email=user.email)
+
+
+@router.delete("/auth/me", status_code=204)
+async def delete_account(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Permanently delete the signed-in account and everything tied to it.
+
+    Required by App Store Review Guideline 5.1.1(v). Sessions, words, pages
+    (FK ON DELETE CASCADE to users) and encounters (cascade from words) go with it.
+    """
+    await db.execute(delete(User).where(User.id == user.id))
+    await db.commit()
