@@ -302,6 +302,9 @@ ios/MandarinReader/MandarinReader/
 ### Running in the Simulator
 Start the backend locally (see Local Development Setup), then run the `MandarinReader` scheme on a simulator — the Debug build talks to `http://localhost:8000`. Sign in or create an account on the login screen.
 
+### App Store Screenshots
+Start the backend locally, then run `ios/MandarinReader/scripts/take_screenshots.sh`. It runs `AppStoreScreenshotTests` on an iPhone 17 Pro Max and an iPad Pro 13-inch (M5) simulator (override with `IPHONE_SIM` / `IPAD_SIM`), signs up a fresh account each run, and saves the start screen, Settings, a flash card and the handwriting canvas to `ios/MandarinReader/screenshots/` (git-ignored).
+
 ### Running on Device
 1. Open `ios/MandarinReader/MandarinReader.xcodeproj` in Xcode
 2. Signing & Capabilities → select your team, set a unique bundle ID

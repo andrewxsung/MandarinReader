@@ -54,3 +54,6 @@ ios/build/
 # Test artifacts
 htmlcov/
 .coverage
+
+# App Store screenshots (scripts/take_screenshots.sh)
+ios/MandarinReader/screenshots/

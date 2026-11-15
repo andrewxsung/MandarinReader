@@ -20,6 +20,13 @@ final class AuthStore: ObservableObject {
         let storage = storage ?? KeychainTokenStorage()
         self.storage = storage
         self.urlSession = urlSession
+        #if DEBUG
+        // AppStoreScreenshotTests launches with this flag so every run starts
+        // signed out (the Keychain token otherwise survives between runs).
+        if ProcessInfo.processInfo.arguments.contains("-resetAuthForUITests") {
+            storage.clear()
+        }
+        #endif
         let saved = storage.load()
         self.token = saved?.token
         // The Keychain token survives app deletion but the UserDefaults email

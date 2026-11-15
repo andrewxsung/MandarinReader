@@ -66,6 +66,8 @@ struct StartSessionView: View {
                     Button { showSettings = true } label: {
                         Image(systemName: "gear")
                     }
+                    .accessibilityLabel("Settings")
+                    .accessibilityIdentifier("settingsButton")
                 }
             }
             .sheet(isPresented: $showSettings) {
