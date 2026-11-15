@@ -255,7 +255,7 @@ Replaced freehand canvas drawing with animated stroke-order playback using `hanz
 
 ## iPadOS App
 
-Native SwiftUI app for iPad (iPadOS 16.6+) that pulls from the priority queue and runs flash-then-recall handwriting practice sessions.
+Native SwiftUI app, iPhone-first and universal (iOS/iPadOS 16.6+; portrait-only on iPhone), that pulls from the priority queue and runs flash-then-recall handwriting practice sessions.
 
 ### Flow
 1. **Sign in** — on launch, `LoginView` asks for email + password (or creates an account) until the user is signed in; the bearer token is stored in the Keychain, so later launches go straight to Start Session
@@ -318,7 +318,7 @@ Start the backend locally (see Local Development Setup), then run the `MandarinR
 
 - **HSK 1 starter deck:** signup seeds the 150 HSK 2.0 Level 1 words (`backend/app/data/hsk1.json`, Traditional characters, Taiwan-standard forms) at priority 0, so new accounts have a queue on day one and anything captured still outranks them. Built from the MIT-licensed [complete-hsk-vocabulary](https://github.com/drkameleon/complete-hsk-vocabulary); definitions come from CC-CEDICT. Existing accounts are not seeded. The queue now breaks priority ties by word id so the starter words come out in list order. Tests opt in to seeding with `@pytest.mark.starter_deck`.
 - **Account deletion:** `DELETE /api/auth/me` (cascades to sessions, words, encounters and pages) and a Delete Account button with confirmation in iOS Settings, per App Store Guideline 5.1.1(v).
-- **iOS:** app target is iPad-only (`TARGETED_DEVICE_FAMILY = 2`), `PrivacyInfo.xcprivacy` declares the UserDefaults required-reason API (CA92.1) and the collected data (email, user ID, user content, app functionality only, not tracking), and Settings credits CC-CEDICT and the HSK list alongside Arphic.
+- **iOS:** `PrivacyInfo.xcprivacy` declares the UserDefaults required-reason API (CA92.1) and the collected data (email, user ID, user content, app functionality only, not tracking), and Settings credits CC-CEDICT and the HSK list alongside Arphic.
 
 ### 2026-10-11 — Accounts + Server-Side Claude
 
